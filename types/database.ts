@@ -117,6 +117,22 @@ export interface Database {
         };
         Relationships: [];
       };
+      admin_allowlist: {
+        Row: {
+          email: string;
+          added_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          email: string;
+          added_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          added_by?: string | null;
+        };
+        Relationships: [];
+      };
       order_items: {
         Row: {
           id: string;
@@ -140,7 +156,16 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      add_admin: {
+        Args: { target_email: string };
+        Returns: undefined;
+      };
+      remove_admin: {
+        Args: { target_email: string };
+        Returns: undefined;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

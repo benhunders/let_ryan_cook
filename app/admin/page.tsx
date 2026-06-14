@@ -24,12 +24,20 @@ export default async function AdminPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Chef dashboard</h1>
-        <Link
-          href="/admin/menus/new"
-          className="rounded-md bg-brand text-white px-4 py-2 font-medium hover:bg-brand-dark"
-        >
-          + New menu
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/settings"
+            className="rounded-md border border-black/15 px-4 py-2 font-medium hover:bg-black/5"
+          >
+            Settings
+          </Link>
+          <Link
+            href="/admin/menus/new"
+            className="rounded-md bg-brand text-white px-4 py-2 font-medium hover:bg-brand-dark"
+          >
+            + New menu
+          </Link>
+        </div>
       </div>
 
       {!menus || menus.length === 0 ? (
