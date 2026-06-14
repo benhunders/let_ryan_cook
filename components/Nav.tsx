@@ -22,6 +22,9 @@ export async function Nav() {
               <Link href="/orders" className="hover:text-brand">
                 My order
               </Link>
+              <Link href="/account" className="hover:text-brand">
+                Account
+              </Link>
               <span className="hidden sm:inline text-black/50">
                 {profile.full_name ?? profile.email}
               </span>

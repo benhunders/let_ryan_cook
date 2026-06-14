@@ -233,6 +233,7 @@ export type Database = {
     }
     Functions: {
       add_admin: { Args: { target_email: string }; Returns: undefined }
+      delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined }
       is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
       remove_admin: { Args: { target_email: string }; Returns: undefined }
     }

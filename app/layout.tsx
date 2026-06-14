@@ -34,7 +34,10 @@ export default function RootLayout({
           {children}
         </main>
         <footer className="border-t border-black/10 py-6 text-center text-sm text-black/50">
-          Let Ryan Cook 🍳 — fresh menus, every week.
+          <p>Let Ryan Cook 🍳 — fresh menus, every week.</p>
+          <a href="/privacy" className="hover:text-brand underline">
+            Privacy policy
+          </a>
         </footer>
       </body>
     </html>
