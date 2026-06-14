@@ -1,179 +1,253 @@
-// Hand-written database types mirroring the Supabase schema.
-// These can be regenerated with the Supabase MCP `generate_typescript_types`
-// (or `supabase gen types typescript`) once the project is provisioned.
-
 export type Json =
   | string
   | number
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string;
-          email: string | null;
-          full_name: string | null;
-          avatar_url: string | null;
-          is_admin: boolean;
-          created_at: string;
-        };
-        Insert: {
-          id: string;
-          email?: string | null;
-          full_name?: string | null;
-          avatar_url?: string | null;
-          is_admin?: boolean;
-          created_at?: string;
-        };
-        Update: {
-          email?: string | null;
-          full_name?: string | null;
-          avatar_url?: string | null;
-        };
-        Relationships: [];
-      };
-      menus: {
-        Row: {
-          id: string;
-          title: string;
-          week_start: string | null;
-          published: boolean;
-          created_by: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          title: string;
-          week_start?: string | null;
-          published?: boolean;
-          created_by?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          title?: string;
-          week_start?: string | null;
-          published?: boolean;
-        };
-        Relationships: [];
-      };
-      dishes: {
-        Row: {
-          id: string;
-          menu_id: string;
-          name: string;
-          description: string | null;
-          price: number | null;
-          image_url: string | null;
-          position: number;
-          available: boolean;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          menu_id: string;
-          name: string;
-          description?: string | null;
-          price?: number | null;
-          image_url?: string | null;
-          position?: number;
-          available?: boolean;
-          created_at?: string;
-        };
-        Update: {
-          name?: string;
-          description?: string | null;
-          price?: number | null;
-          image_url?: string | null;
-          position?: number;
-          available?: boolean;
-        };
-        Relationships: [];
-      };
-      orders: {
-        Row: {
-          id: string;
-          user_id: string;
-          menu_id: string;
-          notes: string | null;
-          status: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          menu_id: string;
-          notes?: string | null;
-          status?: string;
-          created_at?: string;
-        };
-        Update: {
-          notes?: string | null;
-          status?: string;
-        };
-        Relationships: [];
-      };
       admin_allowlist: {
         Row: {
-          email: string;
-          added_by: string | null;
-          created_at: string;
-        };
+          added_by: string | null
+          created_at: string
+          email: string
+        }
         Insert: {
-          email: string;
-          added_by?: string | null;
-          created_at?: string;
-        };
+          added_by?: string | null
+          created_at?: string
+          email: string
+        }
         Update: {
-          added_by?: string | null;
-        };
-        Relationships: [];
-      };
+          added_by?: string | null
+          created_at?: string
+          email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_allowlist_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dishes: {
+        Row: {
+          available: boolean
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          menu_id: string
+          name: string
+          position: number
+          price: number | null
+        }
+        Insert: {
+          available?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          menu_id: string
+          name: string
+          position?: number
+          price?: number | null
+        }
+        Update: {
+          available?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          menu_id?: string
+          name?: string
+          position?: number
+          price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dishes_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "menus"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menus: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          published: boolean
+          title: string
+          week_start: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          published?: boolean
+          title: string
+          week_start?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          published?: boolean
+          title?: string
+          week_start?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menus_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
-          id: string;
-          order_id: string;
-          dish_id: string;
-          quantity: number;
-          note: string | null;
-        };
+          dish_id: string
+          id: string
+          note: string | null
+          order_id: string
+          quantity: number
+        }
         Insert: {
-          id?: string;
-          order_id: string;
-          dish_id: string;
-          quantity?: number;
-          note?: string | null;
-        };
+          dish_id: string
+          id?: string
+          note?: string | null
+          order_id: string
+          quantity?: number
+        }
         Update: {
-          quantity?: number;
-          note?: string | null;
-        };
-        Relationships: [];
-      };
-    };
-    Views: Record<string, never>;
+          dish_id?: string
+          id?: string
+          note?: string | null
+          order_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_dish_id_fkey"
+            columns: ["dish_id"]
+            isOneToOne: false
+            referencedRelation: "dishes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          id: string
+          menu_id: string
+          notes: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          menu_id: string
+          notes?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          menu_id?: string
+          notes?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "menus"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          is_admin: boolean
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          is_admin?: boolean
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          is_admin?: boolean
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
     Functions: {
-      add_admin: {
-        Args: { target_email: string };
-        Returns: undefined;
-      };
-      remove_admin: {
-        Args: { target_email: string };
-        Returns: undefined;
-      };
-    };
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
-  };
+      add_admin: { Args: { target_email: string }; Returns: undefined }
+      is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
+      remove_admin: { Args: { target_email: string }; Returns: undefined }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
 
 // Convenience row aliases used across the app.
-export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
-export type Menu = Database["public"]["Tables"]["menus"]["Row"];
-export type Dish = Database["public"]["Tables"]["dishes"]["Row"];
-export type Order = Database["public"]["Tables"]["orders"]["Row"];
-export type OrderItem = Database["public"]["Tables"]["order_items"]["Row"];
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"]
+export type Menu = Database["public"]["Tables"]["menus"]["Row"]
+export type Dish = Database["public"]["Tables"]["dishes"]["Row"]
+export type Order = Database["public"]["Tables"]["orders"]["Row"]
+export type OrderItem = Database["public"]["Tables"]["order_items"]["Row"]
