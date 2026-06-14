@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { LoginButton } from "@/components/LoginButton";
-import { EmailLogin } from "@/components/EmailLogin";
+import { EmailPasswordAuth } from "@/components/EmailPasswordAuth";
 
 export default async function LoginPage({
   searchParams,
@@ -31,7 +31,7 @@ export default async function LoginPage({
         OR
         <span className="h-px flex-1 bg-black/10" />
       </div>
-      <EmailLogin next={next} />
+      <EmailPasswordAuth next={next} />
     </div>
   );
 }
