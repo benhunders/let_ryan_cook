@@ -43,10 +43,38 @@ export function EmailPasswordAuth({ next }: { next: string }) {
       return;
     }
 
-    const { error: err } =
-      mode === "signup"
-        ? await supabase.auth.signUp({ email, password })
-        : await supabase.auth.signInWithPassword({ email, password });
+    if (mode === "signup") {
+      const { data, error: err } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          // The confirmation link routes back through our callback (which
+          // exchanges the code and signs them in) and lands on /welcome.
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/welcome`,
+        },
+      });
+      if (err) {
+        setBusy(false);
+        setError(err.message);
+        return;
+      }
+      // With email confirmation on, there's no session yet — the user must
+      // click the emailed link first. Show a "check your inbox" message.
+      if (!data.session) {
+        setBusy(false);
+        setSent(true);
+        return;
+      }
+      // Confirmation disabled → already signed in.
+      router.push(next);
+      router.refresh();
+      return;
+    }
+
+    const { error: err } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     if (err) {
       setBusy(false);
       setError(err.message);
@@ -56,11 +84,21 @@ export function EmailPasswordAuth({ next }: { next: string }) {
     router.refresh();
   }
 
-  if (mode === "forgot" && sent) {
+  if (sent) {
     return (
       <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-left text-sm text-green-800">
-        If an account exists for <strong>{email}</strong>, a password-reset link
-        is on its way. Check your inbox.
+        {mode === "signup" ? (
+          <>
+            📬 Almost there! We sent a confirmation link to{" "}
+            <strong>{email}</strong>. Click it to activate your account — you&apos;ll
+            be signed in automatically.
+          </>
+        ) : (
+          <>
+            If an account exists for <strong>{email}</strong>, a password-reset
+            link is on its way. Check your inbox.
+          </>
+        )}
         <button
           type="button"
           onClick={() => switchMode("signin")}
