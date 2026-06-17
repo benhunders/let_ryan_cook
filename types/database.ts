@@ -42,9 +42,11 @@ export type Database = {
       }
       dishes: {
         Row: {
+          allergens: string[]
           available: boolean
           created_at: string
           description: string | null
+          dietary_tags: string[]
           id: string
           image_url: string | null
           menu_id: string
@@ -53,9 +55,11 @@ export type Database = {
           price: number | null
         }
         Insert: {
+          allergens?: string[]
           available?: boolean
           created_at?: string
           description?: string | null
+          dietary_tags?: string[]
           id?: string
           image_url?: string | null
           menu_id: string
@@ -64,9 +68,11 @@ export type Database = {
           price?: number | null
         }
         Update: {
+          allergens?: string[]
           available?: boolean
           created_at?: string
           description?: string | null
+          dietary_tags?: string[]
           id?: string
           image_url?: string | null
           menu_id?: string

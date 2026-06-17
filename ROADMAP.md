@@ -29,27 +29,27 @@ Data model: `profiles`, `menus`, `dishes`, `orders` (unique per `user_id`+`menu_
 
 Each item below is documented as **What · Why · Key changes (DB / backend / UI) · Reuses · Effort · Dependencies**.
 
-### Phase 1 — Admin visibility & onboarding foundations
+### Phase 1 — Admin visibility & dish labels ✅ *(shipped)*
 
-#### 1a. Admin panel: users + live order status `[user request]`
+#### 1a. Admin panel: users + live order status `[user request]` ✅
 - **What:** A dedicated admin view listing every user account alongside each user's current / recent orders and their status.
 - **Why:** Ryan needs a single place to see who's signed up and where each order stands, without digging through individual menus.
 - **Key changes:**
   - **DB:** None required to start — admin-read RLS on `profiles` and `orders` already exists. Optionally add a read-only SQL view or RPC that joins users → latest order → status for an efficient summary.
-  - **UI:** New route `app/admin/users/page.tsx` — a table of all `profiles` (name, email, joined date, admin badge) with an expandable per-user order list and status chips. Link it from the admin nav.
+  - **UI:** New route `app/admin/users/page.tsx` — all `profiles` (name, email, joined date, role badge) with a per-user order list and status chips, linked from the admin dashboard.
 - **Reuses:** `requireAdmin()` (`lib/auth.ts`), existing admin-read RLS policies, and the per-customer breakdown patterns already in `app/admin/menus/[id]/page.tsx`.
 - **Effort:** M
 - **Dependencies:** None. (Status chips become more meaningful once Phase 2 lands.)
 
-#### 1b. Onboarding allergy & preferences survey `[user request]`
-- **What:** A short survey during onboarding capturing allergies, dietary preferences, and free-text notes — editable later from the account page.
-- **Why:** Lets Ryan cook around real dietary needs and personalizes the experience from day one.
+#### 1b. Dish allergen & dietary labels `[user request — revised]` ✅
+- **What:** Ryan tags each dish with allergens (the 14 EU-declared) and positive dietary tags (Vegetarian, Vegan, Gluten-free, Dairy-free); labels render on the menu with a guidance disclaimer.
+- **Why & the privacy pivot:** This started as an *onboarding survey* storing each user's allergies. That data is GDPR special-category **health data** (and religious diet labels reveal belief), raising consent, access-control, and erasure obligations. We deliberately chose **not to store user health data** — instead we label the dishes and let the informed customer decide. Same outcome for safety, none of the privacy burden. This is the standard regulated-food-service model.
 - **Key changes:**
-  - **DB:** New migration `0006_user_preferences.sql` adding preference fields (allergies, dietary tags, free-text notes) plus an `onboarding_completed` flag — either as columns on `profiles` or a dedicated `user_preferences` table. RLS: users read/write their own; admins read.
-  - **UI:** A post-signup onboarding step/route that prompts the survey (and redirects there until `onboarding_completed` is set), with an edit surface added to `app/account/page.tsx`.
-- **Reuses:** Existing profile/auth flow and account page; the `handle_new_user()` trigger pattern from `supabase/migrations/0002_admin_settings.sql`.
-- **Effort:** M
-- **Dependencies:** None. Unlocks Phase 4 (dietary filtering).
+  - **DB:** Migration `0006_dish_dietary.sql` adds `allergens text[]` and `dietary_tags text[]` to `dishes` (default `'{}'`). No new RLS — inherits the existing dish policies.
+  - **UI:** Allergen/dietary chip toggles per dish in `components/MenuBuilder.tsx`; badges + "Contains:" line in `components/DishCard.tsx`; disclaimer on `app/page.tsx`. Shared values in `lib/dietary.ts`.
+- **Reuses:** Existing dish CRUD, RLS, and card rendering.
+- **Effort:** S–M
+- **Dependencies:** None.
 
 ### Phase 2 — Order status workflow `[addition]`
 - **What:** Turn the dormant `orders.status` field into a real state machine: `submitted → preparing → ready → completed` (plus `cancelled`).
@@ -71,15 +71,11 @@ Each item below is documented as **What · Why · Key changes (DB / backend / UI
 - **Effort:** M
 - **Dependencies:** None (admin view slots into the Phase 1 panel).
 
-### Phase 4 — Dietary flags + filtering `[addition]`
-- **What:** Tag dishes with allergens / dietary info; surface badges and warn or filter dishes based on each customer's saved allergy profile.
-- **Why:** Closes the loop on the onboarding survey — turns stored preferences into a safer, personalized menu.
-- **Key changes:**
-  - **DB:** Migration extending `dishes` with allergen / dietary tags.
-  - **UI:** Allergen badges on `components/DishCard.tsx`; warn/filter logic on the home menu driven by the customer's saved allergies; tag-editing controls in `components/MenuBuilder.tsx`.
-- **Reuses:** Phase 1b preference data; existing dish rendering and menu builder.
-- **Effort:** M
-- **Dependencies:** Phase 1b (preferences must exist to filter against).
+### Phase 4 — Personalized dietary filtering `[addition — deferred / likely declined]`
+- **What:** Would let logged-in customers store their own allergies and auto-hide/warn on dishes they can't eat.
+- **Status:** **Dish-level allergen & dietary labels already shipped in Phase 1b.** The remaining piece — *personalized* filtering — requires storing per-user allergy (health) data, which we intentionally chose to avoid for privacy reasons (see Phase 1b). Listed here for completeness; revisit only if there's clear demand and appetite for the GDPR special-category handling it entails (explicit consent, restricted access, erasure).
+- **Effort:** M (plus privacy/compliance work)
+- **Dependencies:** Would require introducing the user-preferences storage that Phase 1b deliberately dropped.
 
 ### Phase 5 — Email notifications `[addition]`
 - **What:** Email customers on order confirmation and status changes; email Ryan on new orders.

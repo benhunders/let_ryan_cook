@@ -26,6 +26,12 @@ export default async function AdminPage() {
         <h1 className="text-2xl font-bold">Chef dashboard</h1>
         <div className="flex items-center gap-3">
           <Link
+            href="/admin/users"
+            className="rounded-md border border-black/15 px-4 py-2 font-medium hover:bg-black/5"
+          >
+            Users
+          </Link>
+          <Link
             href="/admin/settings"
             className="rounded-md border border-black/15 px-4 py-2 font-medium hover:bg-black/5"
           >

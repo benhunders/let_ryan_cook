@@ -69,6 +69,10 @@ export default async function Home() {
     }
   }
 
+  const hasLabels = (dishes ?? []).some(
+    (d) => (d.allergens ?? []).length > 0 || (d.dietary_tags ?? []).length > 0
+  );
+
   return (
     <div>
       <div className="mb-6">
@@ -76,6 +80,12 @@ export default async function Home() {
           {menu.week_start ? `Week of ${formatWeek(menu.week_start)}` : "This week"}
         </p>
         <h1 className="text-3xl font-bold">{menu.title}</h1>
+        {hasLabels && (
+          <p className="mt-2 text-sm text-black/50">
+            Allergen and dietary labels are a guide only. If you have a severe
+            allergy, please message Ryan before ordering.
+          </p>
+        )}
       </div>
 
       {user ? (
