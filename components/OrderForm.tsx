@@ -101,6 +101,12 @@ export function OrderForm({
 
     setSaving(false);
     setSaved(true);
+    // Fire-and-forget order notification (confirmation + admin alert).
+    fetch("/api/notify/order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ menuId }),
+    }).catch(() => {});
     router.refresh();
   }
 

@@ -78,15 +78,17 @@ Each item below is documented as **What · Why · Key changes (DB / backend / UI
 - **Effort:** M (plus privacy/compliance work)
 - **Dependencies:** Would require introducing the user-preferences storage that Phase 1b deliberately dropped.
 
-### Phase 5 — Email notifications `[addition — needs provider setup]`
-- **Status:** Not started — this is the one phase that needs external configuration before code: a transactional email provider API key (e.g. Resend) or SMTP credentials, plus a deployed Supabase Edge Function / DB webhook and its secrets. Decide the provider and supply credentials, then this can be built against the Phase 2 status transitions and the order-insert path.
-- **What:** Email customers on order confirmation and status changes; email Ryan on new orders.
+### Phase 5 — Email notifications (Resend) `[addition]` ✅ *(implemented; on branch, pending env config)*
+- **What:** Confirmation to the customer + alert to Ryan when an order is saved; an email to the customer when Ryan changes the order status.
 - **Why:** Keeps both sides informed without anyone having to refresh the app.
 - **Key changes:**
-  - **Backend:** Implement via Supabase (Auth SMTP / Edge Functions / database webhooks) or a transactional provider (e.g. Resend). Trigger on order insert and on status transitions.
-- **Reuses:** Order insert path in `components/OrderForm.tsx`; the Phase 2 status transitions.
-- **Effort:** M–L
-- **Dependencies:** Phase 2 (status-change emails depend on the status workflow). Requires SMTP/provider configuration.
+  - **Backend:** `lib/email.ts` wraps the Resend SDK (no-ops without `RESEND_API_KEY`). Route handlers `app/api/notify/order/route.ts` and `app/api/notify/order-status/route.ts` authorize via the session and re-fetch order data server-side before sending.
+  - **Client:** `components/OrderForm.tsx` and `components/OrderStatusControl.tsx` call those routes best-effort (fire-and-forget) after a successful write.
+  - **Config:** `RESEND_API_KEY` + `EMAIL_FROM` (see `.env.local.example` / README).
+- **Reuses:** Server Supabase client + RLS; Phase 2 `statusLabel`.
+- **Effort:** M
+- **Dependencies:** Phase 2 (status emails). **Action needed:** set `RESEND_API_KEY` and a verified `EMAIL_FROM` in the deployment env (e.g. Vercel) to turn emails on.
+- **Note:** Delivery is best-effort (client-triggered). For guaranteed delivery regardless of the client, upgrade later to a Supabase DB webhook → Edge Function calling the same Resend logic.
 
 ### Phase 6 — Ratings & reviews `[addition]` ✅ *(implemented; on branch, pending merge)*
 - **What:** Customers rate dishes (1–5) with an optional comment; one rating per user per dish.

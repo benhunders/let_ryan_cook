@@ -32,6 +32,12 @@ export function OrderStatusControl({
       setError(e.message);
       return;
     }
+    // Fire-and-forget: email the customer their new status.
+    fetch("/api/notify/order-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId }),
+    }).catch(() => {});
     router.refresh();
   }
 
