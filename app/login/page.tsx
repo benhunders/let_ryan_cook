@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { LoginButton } from "@/components/LoginButton";
+import { EmailPasswordAuth } from "@/components/EmailPasswordAuth";
 
 export default async function LoginPage({
   searchParams,
@@ -24,6 +25,12 @@ export default async function LoginPage({
           Sorry, sign-in failed. Please try again.
         </p>
       )}
+      <EmailPasswordAuth next={next} />
+      <div className="my-5 flex items-center gap-3 text-xs text-black/40">
+        <span className="h-px flex-1 bg-black/10" />
+        OR
+        <span className="h-px flex-1 bg-black/10" />
+      </div>
       <LoginButton next={next} />
     </div>
   );
