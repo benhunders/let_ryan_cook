@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { MenuBuilder } from "@/components/MenuBuilder";
 import { OrderStatusControl } from "@/components/OrderStatusControl";
+import { averagesByDish } from "@/lib/ratings";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,13 @@ export default async function EditMenuPage({
     ? await supabase.from("order_items").select("*").in("order_id", orderIds)
     : { data: [] };
 
+  // Average rating per dish on this menu (admin aggregate view).
+  const dishIds = (dishes ?? []).map((d) => d.id);
+  const { data: ratings } = dishIds.length
+    ? await supabase.from("ratings").select("dish_id, rating").in("dish_id", dishIds)
+    : { data: [] };
+  const ratingByDish = averagesByDish(ratings ?? []);
+
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
   const dishById = new Map((dishes ?? []).map((d) => [d.id, d]));
 
@@ -82,12 +90,22 @@ export default async function EditMenuPage({
             <div className="rounded-xl border border-black/10 bg-white p-4 mb-5">
               <h3 className="font-semibold mb-2">Prep totals</h3>
               <ul className="text-sm grid gap-1 sm:grid-cols-2">
-                {[...tally.entries()].map(([dishId, qty]) => (
-                  <li key={dishId} className="flex justify-between gap-3">
-                    <span>{dishById.get(dishId)?.name ?? "Dish"}</span>
-                    <span className="font-medium tabular-nums">×{qty}</span>
-                  </li>
-                ))}
+                {[...tally.entries()].map(([dishId, qty]) => {
+                  const r = ratingByDish.get(dishId);
+                  return (
+                    <li key={dishId} className="flex justify-between gap-3">
+                      <span>{dishById.get(dishId)?.name ?? "Dish"}</span>
+                      <span className="flex items-center gap-3">
+                        {r && (
+                          <span className="text-amber-600 tabular-nums">
+                            ★ {r.avg.toFixed(1)} ({r.count})
+                          </span>
+                        )}
+                        <span className="font-medium tabular-nums">×{qty}</span>
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
 

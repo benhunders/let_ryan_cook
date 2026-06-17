@@ -5,9 +5,11 @@ import { ALLERGENS, DIETARY_TAGS, labelFor } from "@/lib/dietary";
 // Presentational dish card. Pass interactive controls (stepper, note) as children.
 export function DishCard({
   dish,
+  rating,
   children,
 }: {
   dish: Dish;
+  rating?: { avg: number; count: number };
   children?: React.ReactNode;
 }) {
   const dietaryTags = dish.dietary_tags ?? [];
@@ -43,6 +45,14 @@ export function DishCard({
             </span>
           )}
         </div>
+        {rating && rating.count > 0 && (
+          <p className="text-sm text-amber-600">
+            <span aria-hidden>★</span> {rating.avg.toFixed(1)}{" "}
+            <span className="text-black/40">
+              ({rating.count} rating{rating.count === 1 ? "" : "s"})
+            </span>
+          </p>
+        )}
         {dish.description && (
           <p className="text-sm text-black/60">{dish.description}</p>
         )}

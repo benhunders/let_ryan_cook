@@ -62,15 +62,15 @@ Each item below is documented as **What · Why · Key changes (DB / backend / UI
 - **Effort:** M
 - **Dependencies:** Pairs naturally with 1a. Feeds Phase 5 (notifications on status change).
 
-### Phase 3 — Feedback & suggestions `[user request]`
+### Phase 3 — Feedback & suggestions `[user request]` ✅ *(implemented; on branch, pending merge)*
 - **What:** A "Provide feedback or suggestions" form for users — general feedback, with the option to attach it to a specific dish or menu.
 - **Why:** Gives Ryan a direct signal channel for preferences and ideas, beyond order notes.
 - **Key changes:**
-  - **DB:** New migration `0008_feedback.sql` adding a `feedback` table (`user_id`, optional `dish_id` / `menu_id`, `body`, optional `category`, `created_at`). RLS: users insert/read their own; admins read all.
-  - **UI:** A feedback entry point in the nav/account area + an admin view to read submissions (extend the Phase 1 admin panel).
-- **Reuses:** Standard Supabase insert/RLS patterns; admin-read patterns from Phase 1.
+  - **DB:** Migration `0008_feedback.sql` adds a `feedback` table (`user_id`, optional `dish_id` / `menu_id`, `category`, `body`, `created_at`). RLS: users insert/read their own; admins read all.
+  - **UI:** `/feedback` page with `components/FeedbackForm.tsx` (category + optional "About" dish/menu selector, plus the user's past submissions); admin view at `app/admin/feedback/page.tsx`. Entry points: "Feedback" link in `components/Nav.tsx` and on the admin dashboard. Categories in `lib/feedback.ts`.
+- **Reuses:** Standard Supabase insert/RLS patterns; admin-read + breakdown patterns from Phase 1.
 - **Effort:** M
-- **Dependencies:** None (admin view slots into the Phase 1 panel).
+- **Dependencies:** None.
 
 ### Phase 4 — Personalized dietary filtering `[addition — deferred / likely declined]`
 - **What:** Would let logged-in customers store their own allergies and auto-hide/warn on dishes they can't eat.
@@ -78,7 +78,8 @@ Each item below is documented as **What · Why · Key changes (DB / backend / UI
 - **Effort:** M (plus privacy/compliance work)
 - **Dependencies:** Would require introducing the user-preferences storage that Phase 1b deliberately dropped.
 
-### Phase 5 — Email notifications `[addition]`
+### Phase 5 — Email notifications `[addition — needs provider setup]`
+- **Status:** Not started — this is the one phase that needs external configuration before code: a transactional email provider API key (e.g. Resend) or SMTP credentials, plus a deployed Supabase Edge Function / DB webhook and its secrets. Decide the provider and supply credentials, then this can be built against the Phase 2 status transitions and the order-insert path.
 - **What:** Email customers on order confirmation and status changes; email Ryan on new orders.
 - **Why:** Keeps both sides informed without anyone having to refresh the app.
 - **Key changes:**
@@ -87,15 +88,16 @@ Each item below is documented as **What · Why · Key changes (DB / backend / UI
 - **Effort:** M–L
 - **Dependencies:** Phase 2 (status-change emails depend on the status workflow). Requires SMTP/provider configuration.
 
-### Phase 6 — Ratings & reviews `[addition]`
-- **What:** Let customers rate dishes after a menu closes, with an optional comment.
+### Phase 6 — Ratings & reviews `[addition]` ✅ *(implemented; on branch, pending merge)*
+- **What:** Customers rate dishes (1–5) with an optional comment; one rating per user per dish.
 - **Why:** Gives Ryan a structured quality signal to decide what to cook again.
 - **Key changes:**
-  - **DB:** New `ratings` table (`user_id`, `dish_id`, `rating`, optional `comment`). RLS: users write their own and read aggregates; admin aggregate view.
-  - **UI:** Rating prompt after a menu closes; average rating surfaced on `components/DishCard.tsx`; admin aggregate view.
-- **Reuses:** Dish rendering; admin-read patterns from Phase 1.
+  - **DB:** Migration `0009_ratings.sql` adds a `ratings` table (`user_id`, `dish_id`, `rating` 1–5, `comment`, unique per user+dish). RLS: public read (for averages), users write only their own.
+  - **UI:** `components/RatingControl.tsx` on `/orders` for dishes in **completed** orders (ties into the Phase 2 status); average rating on `components/DishCard.tsx` (menu) and per-dish on the admin menu page. Shared average helper in `lib/ratings.ts`.
+- **Reuses:** Dish rendering, the upsert pattern, admin-read patterns from Phase 1.
 - **Effort:** M
-- **Dependencies:** Benefits from Phase 2 (`completed` status as the trigger to invite a rating).
+- **Dependencies:** Uses Phase 2 (`completed` status invites the rating).
+- **Note:** RLS keeps users to their own rows; the UI (not RLS) limits ratings to dishes the user ordered. Tighten to an ordered-dish check if abuse appears.
 
 ---
 

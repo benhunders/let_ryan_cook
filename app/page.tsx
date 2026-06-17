@@ -4,6 +4,7 @@ import { getUser } from "@/lib/auth";
 import { DishCard } from "@/components/DishCard";
 import { OrderForm } from "@/components/OrderForm";
 import { statusChipClass, statusLabel } from "@/lib/orderStatus";
+import { averagesByDish } from "@/lib/ratings";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,13 @@ export default async function Home() {
     .select("*")
     .eq("menu_id", menu.id)
     .order("position", { ascending: true });
+
+  // Average rating per dish (public) for display on the menu.
+  const dishIds = (dishes ?? []).map((d) => d.id);
+  const { data: ratings } = dishIds.length
+    ? await supabase.from("ratings").select("dish_id, rating").in("dish_id", dishIds)
+    : { data: [] };
+  const ratingByDish = averagesByDish(ratings ?? []);
 
   // Prefill the form with the user's existing order, if any.
   const initialItems: Record<string, { quantity: number; note: string }> = {};
@@ -109,6 +117,7 @@ export default async function Home() {
           dishes={dishes ?? []}
           initialItems={initialItems}
           initialNotes={initialNotes}
+          ratingByDish={Object.fromEntries(ratingByDish)}
         />
       ) : (
         <>
@@ -120,7 +129,7 @@ export default async function Home() {
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {(dishes ?? []).map((d) => (
-              <DishCard key={d.id} dish={d} />
+              <DishCard key={d.id} dish={d} rating={ratingByDish.get(d.id)} />
             ))}
           </div>
         </>

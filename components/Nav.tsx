@@ -22,6 +22,9 @@ export async function Nav() {
               <Link href="/orders" className="hover:text-brand">
                 My order
               </Link>
+              <Link href="/feedback" className="hover:text-brand">
+                Feedback
+              </Link>
               <Link href="/account" className="hover:text-brand">
                 Account
               </Link>

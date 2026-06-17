@@ -14,11 +14,13 @@ export function OrderForm({
   dishes,
   initialItems,
   initialNotes,
+  ratingByDish = {},
 }: {
   menuId: string;
   dishes: Dish[];
   initialItems: Record<string, ItemState>;
   initialNotes: string;
+  ratingByDish?: Record<string, { avg: number; count: number }>;
 }) {
   const router = useRouter();
   const [items, setItems] = useState<Record<string, ItemState>>(() => {
@@ -106,7 +108,7 @@ export function OrderForm({
     <div>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {dishes.map((d) => (
-          <DishCard key={d.id} dish={d}>
+          <DishCard key={d.id} dish={d} rating={ratingByDish[d.id]}>
             {d.available ? (
               <>
                 <QuantityStepper

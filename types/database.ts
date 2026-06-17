@@ -90,6 +90,58 @@ export type Database = {
           },
         ]
       }
+      feedback: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          dish_id: string | null
+          id: string
+          menu_id: string | null
+          user_id: string
+        }
+        Insert: {
+          body: string
+          category?: string
+          created_at?: string
+          dish_id?: string | null
+          id?: string
+          menu_id?: string | null
+          user_id: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          dish_id?: string | null
+          id?: string
+          menu_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_dish_id_fkey"
+            columns: ["dish_id"]
+            isOneToOne: false
+            referencedRelation: "dishes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "menus"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menus: {
         Row: {
           created_at: string
@@ -209,6 +261,48 @@ export type Database = {
           },
         ]
       }
+      ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          dish_id: string
+          id: string
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          dish_id: string
+          id?: string
+          rating: number
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          dish_id?: string
+          id?: string
+          rating?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratings_dish_id_fkey"
+            columns: ["dish_id"]
+            isOneToOne: false
+            referencedRelation: "dishes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -261,3 +355,5 @@ export type Menu = Database["public"]["Tables"]["menus"]["Row"]
 export type Dish = Database["public"]["Tables"]["dishes"]["Row"]
 export type Order = Database["public"]["Tables"]["orders"]["Row"]
 export type OrderItem = Database["public"]["Tables"]["order_items"]["Row"]
+export type Feedback = Database["public"]["Tables"]["feedback"]["Row"]
+export type Rating = Database["public"]["Tables"]["ratings"]["Row"]
