@@ -139,7 +139,7 @@ export function OrderForm({
             setSaved(false);
           }}
           rows={2}
-          placeholder="Anything Ryan should know? Allergies, pickup time, etc."
+          placeholder="Anything the chef should know? Allergies, pickup time, etc."
           className="w-full rounded-md border border-black/15 px-3 py-2 text-sm"
         />
         {error && (

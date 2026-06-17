@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Let Ryan Cook",
-  description: "Ryan's weekly menu — pick your dishes for the week.",
+  title: "Let Him Cook",
+  description: "The chef's weekly menu — pick your dishes for the week.",
 };
 
 export default function RootLayout({
@@ -34,7 +34,7 @@ export default function RootLayout({
           {children}
         </main>
         <footer className="border-t border-black/10 py-6 text-center text-sm text-black/50">
-          <p>Let Ryan Cook 🍳 — fresh menus, every week.</p>
+          <p>Let Him Cook 🍳 — fresh menus, every week.</p>
           <a href="/privacy" className="hover:text-brand underline">
             Privacy policy
           </a>

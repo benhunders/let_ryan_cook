@@ -32,7 +32,7 @@ export default async function Home() {
       <div className="text-center mt-16">
         <h1 className="text-3xl font-bold mb-2">No menu yet 🍲</h1>
         <p className="text-black/60">
-          Ryan hasn&apos;t published this week&apos;s menu. Check back soon!
+          The chef hasn&apos;t published this week&apos;s menu. Check back soon!
         </p>
       </div>
     );
