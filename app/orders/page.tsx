@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/auth";
+import { statusChipClass, statusLabel } from "@/lib/orderStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -68,16 +69,22 @@ export default async function OrdersPage() {
               key={order.id}
               className="rounded-xl border border-black/10 bg-white p-4"
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between gap-3 mb-2">
                 <h2 className="font-semibold">
                   {menu?.title ?? "Menu"}
                 </h2>
-                <Link
-                  href="/"
-                  className="text-sm text-brand hover:underline"
-                >
-                  Edit
-                </Link>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`rounded-full text-xs px-2.5 py-1 ${statusChipClass(
+                      order.status
+                    )}`}
+                  >
+                    {statusLabel(order.status)}
+                  </span>
+                  <Link href="/" className="text-sm text-brand hover:underline">
+                    Edit
+                  </Link>
+                </div>
               </div>
               <ul className="text-sm divide-y divide-black/5">
                 {orderItems.map((it) => {

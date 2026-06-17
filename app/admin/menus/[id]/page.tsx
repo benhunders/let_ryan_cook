@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { MenuBuilder } from "@/components/MenuBuilder";
+import { OrderStatusControl } from "@/components/OrderStatusControl";
 
 export const dynamic = "force-dynamic";
 
@@ -102,8 +103,11 @@ export default async function EditMenuPage({
                     key={order.id}
                     className="rounded-xl border border-black/10 bg-white p-4"
                   >
-                    <div className="font-semibold mb-1">
-                      {profile?.full_name ?? profile?.email ?? "Customer"}
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <div className="font-semibold">
+                        {profile?.full_name ?? profile?.email ?? "Customer"}
+                      </div>
+                      <OrderStatusControl orderId={order.id} status={order.status} />
                     </div>
                     <ul className="text-sm divide-y divide-black/5">
                       {orderItems.map((it) => (

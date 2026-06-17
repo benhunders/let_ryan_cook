@@ -61,7 +61,8 @@ export function OrderForm({
           user_id: user.id,
           menu_id: menuId,
           notes: notes.trim() || null,
-          status: "submitted",
+          // status intentionally omitted: new orders default to 'submitted',
+          // and editing an existing order must not reset a chef-set status.
         },
         { onConflict: "user_id,menu_id" }
       )

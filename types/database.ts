@@ -171,6 +171,7 @@ export type Database = {
           menu_id: string
           notes: string | null
           status: string
+          status_updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -179,6 +180,7 @@ export type Database = {
           menu_id: string
           notes?: string | null
           status?: string
+          status_updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -187,6 +189,7 @@ export type Database = {
           menu_id?: string
           notes?: string | null
           status?: string
+          status_updated_at?: string | null
           user_id?: string
         }
         Relationships: [

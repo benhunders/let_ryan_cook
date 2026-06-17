@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { statusChipClass, statusLabel } from "@/lib/orderStatus";
 import type { Order } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -11,19 +12,6 @@ function formatDate(d: string) {
     month: "short",
     day: "numeric",
   });
-}
-
-// Color map for order status chips. All orders are "submitted" today; the rest
-// are ready for the Phase 2 status workflow.
-function statusChip(status: string) {
-  const styles: Record<string, string> = {
-    submitted: "bg-blue-100 text-blue-700",
-    preparing: "bg-amber-100 text-amber-800",
-    ready: "bg-green-100 text-green-700",
-    completed: "bg-black/10 text-black/60",
-    cancelled: "bg-red-100 text-red-700",
-  };
-  return styles[status] ?? "bg-black/10 text-black/60";
 }
 
 export default async function AdminUsersPage() {
@@ -116,11 +104,11 @@ export default async function AdminUsersPage() {
                             </span>
                           </span>
                           <span
-                            className={`rounded-full text-xs px-2.5 py-1 ${statusChip(
+                            className={`rounded-full text-xs px-2.5 py-1 ${statusChipClass(
                               o.status
                             )}`}
                           >
-                            {o.status}
+                            {statusLabel(o.status)}
                           </span>
                         </li>
                       ))}

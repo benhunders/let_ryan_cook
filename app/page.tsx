@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/auth";
 import { DishCard } from "@/components/DishCard";
 import { OrderForm } from "@/components/OrderForm";
+import { statusChipClass, statusLabel } from "@/lib/orderStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -47,15 +48,17 @@ export default async function Home() {
   // Prefill the form with the user's existing order, if any.
   const initialItems: Record<string, { quantity: number; note: string }> = {};
   let initialNotes = "";
+  let orderStatus: string | null = null;
   if (user) {
     const { data: order } = await supabase
       .from("orders")
-      .select("id, notes")
+      .select("id, notes, status")
       .eq("menu_id", menu.id)
       .eq("user_id", user.id)
       .maybeSingle();
     if (order) {
       initialNotes = order.notes ?? "";
+      orderStatus = order.status;
       const { data: existing } = await supabase
         .from("order_items")
         .select("dish_id, quantity, note")
@@ -80,6 +83,18 @@ export default async function Home() {
           {menu.week_start ? `Week of ${formatWeek(menu.week_start)}` : "This week"}
         </p>
         <h1 className="text-3xl font-bold">{menu.title}</h1>
+        {orderStatus && (
+          <p className="mt-2 text-sm text-black/60">
+            Your order:{" "}
+            <span
+              className={`rounded-full text-xs px-2.5 py-1 ${statusChipClass(
+                orderStatus
+              )}`}
+            >
+              {statusLabel(orderStatus)}
+            </span>
+          </p>
+        )}
         {hasLabels && (
           <p className="mt-2 text-sm text-black/50">
             Allergen and dietary labels are a guide only. If you have a severe

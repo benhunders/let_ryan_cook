@@ -29,7 +29,7 @@ Data model: `profiles`, `menus`, `dishes`, `orders` (unique per `user_id`+`menu_
 
 Each item below is documented as **What · Why · Key changes (DB / backend / UI) · Reuses · Effort · Dependencies**.
 
-### Phase 1 — Admin visibility & dish labels ✅ *(shipped)*
+### Phase 1 — Admin visibility & dish labels ✅ *(implemented; on branch, pending merge)*
 
 #### 1a. Admin panel: users + live order status `[user request]` ✅
 - **What:** A dedicated admin view listing every user account alongside each user's current / recent orders and their status.
@@ -51,12 +51,13 @@ Each item below is documented as **What · Why · Key changes (DB / backend / UI
 - **Effort:** S–M
 - **Dependencies:** None.
 
-### Phase 2 — Order status workflow `[addition]`
+### Phase 2 — Order status workflow `[addition]` ✅ *(implemented; on branch, pending merge)*
 - **What:** Turn the dormant `orders.status` field into a real state machine: `submitted → preparing → ready → completed` (plus `cancelled`).
 - **Why:** Gives customers visibility into their order and gives Ryan a way to track prep progress.
 - **Key changes:**
-  - **DB:** Migration `0007_order_status.sql` constraining `status` to the allowed values; optional `status_updated_at` timestamp. Add an RLS update policy so only admins can change status.
-  - **UI:** Admin controls to advance status (in the Phase 1 admin panel and/or `app/admin/menus/[id]/page.tsx`); customer-facing status display on `app/orders/page.tsx` and the home page.
+  - **DB:** Migration `0007_order_status.sql` adds a `orders_status_check` constraint on the allowed values, a `status_updated_at` timestamp, and an `orders_update_admin` RLS policy so admins can change status (customers keep `orders_update_own`).
+  - **UI:** `components/OrderStatusControl.tsx` (admin status dropdown) wired into the per-customer breakdown in `app/admin/menus/[id]/page.tsx`; read-only status chips for customers on `app/orders/page.tsx` and the home page; shared helpers in `lib/orderStatus.ts`.
+  - **Fix:** `components/OrderForm.tsx` no longer writes `status` on save, so a customer editing their order can't reset a chef-set status (new orders still default to `submitted`).
 - **Reuses:** Existing `orders` table and admin order views; `is_admin()` for the RLS policy.
 - **Effort:** M
 - **Dependencies:** Pairs naturally with 1a. Feeds Phase 5 (notifications on status change).
