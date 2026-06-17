@@ -14,11 +14,13 @@ export function OrderForm({
   dishes,
   initialItems,
   initialNotes,
+  ratingByDish = {},
 }: {
   menuId: string;
   dishes: Dish[];
   initialItems: Record<string, ItemState>;
   initialNotes: string;
+  ratingByDish?: Record<string, { avg: number; count: number }>;
 }) {
   const router = useRouter();
   const [items, setItems] = useState<Record<string, ItemState>>(() => {
@@ -61,7 +63,8 @@ export function OrderForm({
           user_id: user.id,
           menu_id: menuId,
           notes: notes.trim() || null,
-          status: "submitted",
+          // status intentionally omitted: new orders default to 'submitted',
+          // and editing an existing order must not reset a chef-set status.
         },
         { onConflict: "user_id,menu_id" }
       )
@@ -98,6 +101,12 @@ export function OrderForm({
 
     setSaving(false);
     setSaved(true);
+    // Fire-and-forget order notification (confirmation + admin alert).
+    fetch("/api/notify/order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ menuId }),
+    }).catch(() => {});
     router.refresh();
   }
 
@@ -105,7 +114,7 @@ export function OrderForm({
     <div>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {dishes.map((d) => (
-          <DishCard key={d.id} dish={d}>
+          <DishCard key={d.id} dish={d} rating={ratingByDish[d.id]}>
             {d.available ? (
               <>
                 <QuantityStepper

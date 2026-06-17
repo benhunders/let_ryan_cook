@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ImageUpload } from "./ImageUpload";
+import { ALLERGENS, DIETARY_TAGS } from "@/lib/dietary";
 import type { Menu, Dish } from "@/types/database";
 
 type Row = {
@@ -13,10 +14,20 @@ type Row = {
   price: string;
   image_url: string;
   available: boolean;
+  allergens: string[];
+  dietary_tags: string[];
 };
 
 function emptyRow(): Row {
-  return { name: "", description: "", price: "", image_url: "", available: true };
+  return {
+    name: "",
+    description: "",
+    price: "",
+    image_url: "",
+    available: true,
+    allergens: [],
+    dietary_tags: [],
+  };
 }
 
 const SUGGESTED_MIN = 6;
@@ -43,6 +54,8 @@ export function MenuBuilder({
           price: d.price?.toString() ?? "",
           image_url: d.image_url ?? "",
           available: d.available,
+          allergens: d.allergens ?? [],
+          dietary_tags: d.dietary_tags ?? [],
         }))
       : Array.from({ length: SUGGESTED_MIN }, emptyRow)
   );
@@ -51,6 +64,20 @@ export function MenuBuilder({
 
   function updateRow(i: number, patch: Partial<Row>) {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+  function toggleTag(i: number, field: "allergens" | "dietary_tags", value: string) {
+    setRows((prev) =>
+      prev.map((r, idx) => {
+        if (idx !== i) return r;
+        const has = r[field].includes(value);
+        return {
+          ...r,
+          [field]: has
+            ? r[field].filter((v) => v !== value)
+            : [...r[field], value],
+        };
+      })
+    );
   }
   function addRow() {
     setRows((prev) => [...prev, emptyRow()]);
@@ -141,6 +168,8 @@ export function MenuBuilder({
         image_url: r.image_url.trim() || null,
         position: idx,
         available: r.available,
+        allergens: r.allergens,
+        dietary_tags: r.dietary_tags,
       };
       if (r.id) {
         const { error: e } = await supabase
@@ -269,6 +298,54 @@ export function MenuBuilder({
                     />
                     Available
                   </label>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-black/60 mb-1">
+                    Dietary
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {DIETARY_TAGS.map((t) => {
+                      const on = row.dietary_tags.includes(t.value);
+                      return (
+                        <button
+                          key={t.value}
+                          type="button"
+                          onClick={() => toggleTag(i, "dietary_tags", t.value)}
+                          className={
+                            on
+                              ? "rounded-full border border-green-600 bg-green-100 text-green-800 text-xs px-2 py-0.5"
+                              : "rounded-full border border-black/15 text-black/60 text-xs px-2 py-0.5 hover:bg-black/5"
+                          }
+                        >
+                          {t.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-black/60 mb-1">
+                    Allergens
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {ALLERGENS.map((t) => {
+                      const on = row.allergens.includes(t.value);
+                      return (
+                        <button
+                          key={t.value}
+                          type="button"
+                          onClick={() => toggleTag(i, "allergens", t.value)}
+                          className={
+                            on
+                              ? "rounded-full border border-amber-600 bg-amber-100 text-amber-800 text-xs px-2 py-0.5"
+                              : "rounded-full border border-black/15 text-black/60 text-xs px-2 py-0.5 hover:bg-black/5"
+                          }
+                        >
+                          {t.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 <button
                   type="button"

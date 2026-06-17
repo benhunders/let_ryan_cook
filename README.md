@@ -31,6 +31,8 @@ npm run dev
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API → Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API → anon/publishable key |
+| `RESEND_API_KEY` *(optional)* | Resend → API Keys. Enables order/status emails; if unset, emails are skipped. |
+| `EMAIL_FROM` *(optional)* | A verified Resend sender, e.g. `Let Him Cook <hi@yourdomain.com>`. |
 
 ## Database
 Schema lives in `supabase/migrations/`. Tables: `profiles`, `menus`, `dishes`, `orders`,

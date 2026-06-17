@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/auth";
 import { DishCard } from "@/components/DishCard";
 import { OrderForm } from "@/components/OrderForm";
+import { statusChipClass, statusLabel } from "@/lib/orderStatus";
+import { averagesByDish } from "@/lib/ratings";
 
 export const dynamic = "force-dynamic";
 
@@ -44,18 +46,27 @@ export default async function Home() {
     .eq("menu_id", menu.id)
     .order("position", { ascending: true });
 
+  // Average rating per dish (public) for display on the menu.
+  const dishIds = (dishes ?? []).map((d) => d.id);
+  const { data: ratings } = dishIds.length
+    ? await supabase.from("ratings").select("dish_id, rating").in("dish_id", dishIds)
+    : { data: [] };
+  const ratingByDish = averagesByDish(ratings ?? []);
+
   // Prefill the form with the user's existing order, if any.
   const initialItems: Record<string, { quantity: number; note: string }> = {};
   let initialNotes = "";
+  let orderStatus: string | null = null;
   if (user) {
     const { data: order } = await supabase
       .from("orders")
-      .select("id, notes")
+      .select("id, notes, status")
       .eq("menu_id", menu.id)
       .eq("user_id", user.id)
       .maybeSingle();
     if (order) {
       initialNotes = order.notes ?? "";
+      orderStatus = order.status;
       const { data: existing } = await supabase
         .from("order_items")
         .select("dish_id, quantity, note")
@@ -69,6 +80,10 @@ export default async function Home() {
     }
   }
 
+  const hasLabels = (dishes ?? []).some(
+    (d) => (d.allergens ?? []).length > 0 || (d.dietary_tags ?? []).length > 0
+  );
+
   return (
     <div>
       <div className="mb-6">
@@ -76,6 +91,24 @@ export default async function Home() {
           {menu.week_start ? `Week of ${formatWeek(menu.week_start)}` : "This week"}
         </p>
         <h1 className="text-3xl font-bold">{menu.title}</h1>
+        {orderStatus && (
+          <p className="mt-2 text-sm text-black/60">
+            Your order:{" "}
+            <span
+              className={`rounded-full text-xs px-2.5 py-1 ${statusChipClass(
+                orderStatus
+              )}`}
+            >
+              {statusLabel(orderStatus)}
+            </span>
+          </p>
+        )}
+        {hasLabels && (
+          <p className="mt-2 text-sm text-black/50">
+            Allergen and dietary labels are a guide only. If you have a severe
+            allergy, please message Ryan before ordering.
+          </p>
+        )}
       </div>
 
       {user ? (
@@ -84,6 +117,7 @@ export default async function Home() {
           dishes={dishes ?? []}
           initialItems={initialItems}
           initialNotes={initialNotes}
+          ratingByDish={Object.fromEntries(ratingByDish)}
         />
       ) : (
         <>
@@ -95,7 +129,7 @@ export default async function Home() {
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {(dishes ?? []).map((d) => (
-              <DishCard key={d.id} dish={d} />
+              <DishCard key={d.id} dish={d} rating={ratingByDish.get(d.id)} />
             ))}
           </div>
         </>
