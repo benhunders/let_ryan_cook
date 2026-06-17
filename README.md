@@ -1,4 +1,4 @@
-# Let Ryan Cook 🍳
+# Let Him Cook 🍳
 
 An UberEats-style app where **Ryan (the chef)** publishes a fresh menu each week and
 **customers sign in with Google** to pick the dishes they want — with quantities and notes.

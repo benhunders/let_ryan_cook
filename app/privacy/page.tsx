@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy Policy — Let Ryan Cook",
+  title: "Privacy Policy — Let Him Cook",
 };
 
 // NOTE: This is a practical starting template, not legal advice. Replace the
@@ -16,7 +16,7 @@ export default function PrivacyPage() {
       <div className="space-y-6 text-[15px] leading-relaxed">
         <section>
           <p>
-            This policy explains how Let Ryan Cook (&ldquo;we&rdquo;) handles
+            This policy explains how Let Him Cook (&ldquo;we&rdquo;) handles
             your personal data when you use this app to view weekly menus and
             place orders. The data controller is{" "}
             <strong>[your name / business]</strong>, contactable at{" "}

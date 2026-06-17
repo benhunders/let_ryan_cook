@@ -1,4 +1,4 @@
--- Let Ryan Cook — initial schema, RLS, auth trigger, and storage bucket.
+-- Let Him Cook — initial schema, RLS, auth trigger, and storage bucket.
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- Tables

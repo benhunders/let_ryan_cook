@@ -1,4 +1,4 @@
--- Let Ryan Cook — admin allowlist + self-service admin management.
+-- Let Him Cook — admin allowlist + self-service admin management.
 
 -- Allowlist of emails that should have admin access. An entry here grants admin
 -- on signup (via handle_new_user) and can promote an already-registered user.
