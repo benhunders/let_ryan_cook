@@ -25,13 +25,13 @@ export default async function LoginPage({
           Sorry, sign-in failed. Please try again.
         </p>
       )}
-      <LoginButton next={next} />
+      <EmailPasswordAuth next={next} />
       <div className="my-5 flex items-center gap-3 text-xs text-black/40">
         <span className="h-px flex-1 bg-black/10" />
         OR
         <span className="h-px flex-1 bg-black/10" />
       </div>
-      <EmailPasswordAuth next={next} />
+      <LoginButton next={next} />
     </div>
   );
 }
