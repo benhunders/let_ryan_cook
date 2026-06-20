@@ -40,11 +40,18 @@ export function MenuBuilder({
   dishes?: Dish[];
 }) {
   const router = useRouter();
-  const isEdit = !!menu;
 
   const [title, setTitle] = useState(menu?.title ?? "");
   const [weekStart, setWeekStart] = useState(menu?.week_start ?? "");
   const [published, setPublished] = useState(menu?.published ?? false);
+  // Track the menu id and which dishes are persisted in state, so saving
+  // repeatedly in place (draft workflow) updates rows instead of duplicating
+  // them and creates the menu only once.
+  const [menuId, setMenuId] = useState<string | undefined>(menu?.id);
+  const [savedDishIds, setSavedDishIds] = useState<Set<string>>(
+    () => new Set((dishes ?? []).map((d) => d.id))
+  );
+  const [savedNote, setSavedNote] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>(() =>
     dishes && dishes.length
       ? dishes.map((d) => ({
@@ -64,8 +71,10 @@ export function MenuBuilder({
 
   function updateRow(i: number, patch: Partial<Row>) {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+    setSavedNote(null);
   }
   function toggleTag(i: number, field: "allergens" | "dietary_tags", value: string) {
+    setSavedNote(null);
     setRows((prev) =>
       prev.map((r, idx) => {
         if (idx !== i) return r;
@@ -84,26 +93,34 @@ export function MenuBuilder({
   }
   function removeRow(i: number) {
     setRows((prev) => prev.filter((_, idx) => idx !== i));
+    setSavedNote(null);
   }
 
   const filledCount = rows.filter((r) => r.name.trim()).length;
 
-  async function save() {
+  // Persist the menu + its dishes. Captures new dish ids back into state so
+  // saving repeatedly in place (the draft workflow) updates rows instead of
+  // creating duplicates, and inserts the menu only once.
+  async function persist(
+    nextPublished: boolean,
+    requireDish: boolean
+  ): Promise<boolean> {
     setError(null);
+    setSavedNote(null);
     if (!title.trim()) {
       setError("Please give the menu a title (e.g. “Week of June 16”).");
-      return;
+      return false;
     }
-    if (filledCount === 0) {
-      setError("Add at least one dish before saving.");
-      return;
+    if (requireDish && filledCount === 0) {
+      setError("Add at least one dish before publishing.");
+      return false;
     }
     const badPrice = rows.find(
       (r) => r.name.trim() && r.price.trim() && Number.isNaN(Number(r.price))
     );
     if (badPrice) {
       setError(`“${badPrice.name}” has an invalid price.`);
-      return;
+      return false;
     }
 
     setSaving(true);
@@ -114,59 +131,72 @@ export function MenuBuilder({
     if (!user) {
       setSaving(false);
       setError("Your session expired — please sign in again.");
-      return;
+      return false;
     }
 
-    // 1. Create or update the menu.
-    let menuId = menu?.id;
-    if (isEdit && menuId) {
+    function fail(message: string) {
+      setSaving(false);
+      setError(message);
+    }
+
+    // 1. Create the menu once, then update it on later saves.
+    let id = menuId;
+    if (id) {
       const { error: e } = await supabase
         .from("menus")
         .update({
           title: title.trim(),
           week_start: weekStart || null,
-          published,
+          published: nextPublished,
         })
-        .eq("id", menuId);
-      if (e) return fail(e.message);
+        .eq("id", id);
+      if (e) {
+        fail(e.message);
+        return false;
+      }
     } else {
       const { data, error: e } = await supabase
         .from("menus")
         .insert({
           title: title.trim(),
           week_start: weekStart || null,
-          published,
+          published: nextPublished,
           created_by: user.id,
         })
-        .select()
+        .select("id")
         .single();
-      if (e || !data) return fail(e?.message ?? "Could not create the menu.");
-      menuId = data.id;
+      if (e || !data) {
+        fail(e?.message ?? "Could not create the menu.");
+        return false;
+      }
+      id = data.id;
     }
 
-    // 2. Delete dishes that were removed (cascades to their order items).
-    const initialIds = new Set((dishes ?? []).map((d) => d.id));
+    // 2. Delete dishes removed since the last save.
     const keptIds = new Set(rows.filter((r) => r.id).map((r) => r.id!));
-    const toDelete = [...initialIds].filter((id) => !keptIds.has(id));
+    const toDelete = [...savedDishIds].filter((did) => !keptIds.has(did));
     if (toDelete.length) {
       const { error: e } = await supabase
         .from("dishes")
         .delete()
         .in("id", toDelete);
-      if (e) return fail(e.message);
+      if (e) {
+        fail(e.message);
+        return false;
+      }
     }
 
-    // 3. Upsert each filled dish row, preserving order via position.
-    const valid = rows
-      .map((r, idx) => ({ r, idx }))
-      .filter(({ r }) => r.name.trim());
-    for (const { r, idx } of valid) {
+    // 3. Upsert each filled dish, capturing new ids back into the rows.
+    const updatedRows = [...rows];
+    for (let i = 0; i < updatedRows.length; i++) {
+      const r = updatedRows[i];
+      if (!r.name.trim()) continue;
       const fields = {
         name: r.name.trim(),
         description: r.description.trim() || null,
         price: r.price.trim() ? Number(r.price) : null,
         image_url: r.image_url.trim() || null,
-        position: idx,
+        position: i,
         available: r.available,
         allergens: r.allergens,
         dietary_tags: r.dietary_tags,
@@ -176,22 +206,52 @@ export function MenuBuilder({
           .from("dishes")
           .update(fields)
           .eq("id", r.id);
-        if (e) return fail(e.message);
+        if (e) {
+          fail(e.message);
+          return false;
+        }
       } else {
-        const { error: e } = await supabase
+        const { data, error: e } = await supabase
           .from("dishes")
-          .insert({ ...fields, menu_id: menuId! });
-        if (e) return fail(e.message);
+          .insert({ ...fields, menu_id: id! })
+          .select("id")
+          .single();
+        if (e || !data) {
+          fail(e?.message ?? "Could not save a dish.");
+          return false;
+        }
+        updatedRows[i] = { ...r, id: data.id };
       }
     }
 
+    setRows(updatedRows);
+    setMenuId(id);
+    setPublished(nextPublished);
+    setSavedDishIds(new Set(updatedRows.filter((r) => r.id).map((r) => r.id!)));
     setSaving(false);
-    router.push("/admin");
-    router.refresh();
+    return true;
+  }
 
-    function fail(message: string) {
-      setSaving(false);
-      setError(message);
+  // Save progress without publishing (or take a published menu offline),
+  // staying on the page so you can keep adding dishes.
+  async function saveDraft() {
+    const wasPublished = published;
+    const ok = await persist(false, false);
+    if (ok) {
+      setSavedNote(
+        wasPublished ? "Unpublished — saved as draft ✓" : "Draft saved ✓"
+      );
+      router.refresh();
+    }
+  }
+
+  // Publish (or save changes to an already-published menu) and return to the
+  // dashboard.
+  async function publishMenu() {
+    const ok = await persist(true, true);
+    if (ok) {
+      router.push("/admin");
+      router.refresh();
     }
   }
 
@@ -203,7 +263,10 @@ export function MenuBuilder({
           <label className="block text-sm font-medium mb-1">Menu title</label>
           <input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setSavedNote(null);
+            }}
             placeholder="Week of June 16"
             className="w-full rounded-md border border-black/15 px-3 py-2"
           />
@@ -215,23 +278,26 @@ export function MenuBuilder({
           <input
             type="date"
             value={weekStart}
-            onChange={(e) => setWeekStart(e.target.value)}
+            onChange={(e) => {
+              setWeekStart(e.target.value);
+              setSavedNote(null);
+            }}
             className="w-full rounded-md border border-black/15 px-3 py-2"
           />
         </div>
         <div className="flex items-end">
-          <label className="inline-flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={published}
-              onChange={(e) => setPublished(e.target.checked)}
-              className="h-4 w-4"
-            />
-            <span className="text-sm">
-              Published{" "}
-              <span className="text-black/50">(visible to customers)</span>
+          <div className="text-sm">
+            <span className="text-black/50">Status: </span>
+            <span
+              className={
+                published
+                  ? "rounded-full bg-green-100 text-green-700 px-2.5 py-0.5 text-xs"
+                  : "rounded-full bg-black/10 text-black/60 px-2.5 py-0.5 text-xs"
+              }
+            >
+              {published ? "Published" : "Draft"}
             </span>
-          </label>
+          </div>
         </div>
       </div>
 
@@ -370,20 +436,31 @@ export function MenuBuilder({
         </p>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
-          onClick={save}
+          onClick={publishMenu}
           disabled={saving}
           className="rounded-md bg-brand text-white px-6 py-2.5 font-medium hover:bg-brand-dark disabled:opacity-60"
         >
-          {saving ? "Saving…" : isEdit ? "Save changes" : "Create menu"}
+          {saving ? "Saving…" : published ? "Save changes" : "Publish menu"}
         </button>
         <button
           type="button"
-          onClick={() => router.push("/admin")}
-          className="text-sm text-black/60 hover:underline"
+          onClick={saveDraft}
+          disabled={saving}
+          className="rounded-md border border-black/15 px-6 py-2.5 font-medium hover:bg-black/5 disabled:opacity-60"
         >
-          Cancel
+          {published ? "Unpublish" : "Save draft"}
+        </button>
+        {savedNote && (
+          <span className="text-sm font-medium text-green-700">{savedNote}</span>
+        )}
+        <button
+          type="button"
+          onClick={() => router.push("/admin")}
+          className="ml-auto text-sm text-black/60 hover:underline"
+        >
+          Back to dashboard
         </button>
       </div>
     </div>
