@@ -251,36 +251,32 @@ export function MenuBuilder({
           </span>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           {rows.map((row, i) => (
             <div
               key={row.id ?? `new-${i}`}
-              className="rounded-xl border border-black/10 bg-white p-4 grid grid-cols-[120px_1fr] gap-4"
+              className="rounded-xl border border-black/10 bg-white p-4 space-y-3"
             >
-              <div>
-                <ImageUpload
-                  value={row.image_url}
-                  onChange={(url) => updateRow(i, { image_url: url })}
-                />
-              </div>
-              <div className="space-y-2">
-                <input
-                  value={row.name}
-                  onChange={(e) => updateRow(i, { name: e.target.value })}
-                  placeholder="Dish name"
-                  className="w-full rounded-md border border-black/15 px-2 py-1 font-medium"
-                />
-                <textarea
-                  value={row.description}
-                  onChange={(e) =>
-                    updateRow(i, { description: e.target.value })
-                  }
-                  placeholder="Short description"
-                  rows={2}
-                  className="w-full rounded-md border border-black/15 px-2 py-1 text-sm"
-                />
+              <ImageUpload
+                value={row.image_url}
+                onChange={(url) => updateRow(i, { image_url: url })}
+              />
+              <input
+                value={row.name}
+                onChange={(e) => updateRow(i, { name: e.target.value })}
+                placeholder="Dish name"
+                className="w-full rounded-md border border-black/15 px-3 py-2 font-medium"
+              />
+              <textarea
+                value={row.description}
+                onChange={(e) => updateRow(i, { description: e.target.value })}
+                placeholder="Short description"
+                rows={2}
+                className="w-full rounded-md border border-black/15 px-3 py-2 text-sm"
+              />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-black/50">$</span>
+                  <span className="text-black/50">€</span>
                   <input
                     value={row.price}
                     onChange={(e) => updateRow(i, { price: e.target.value })}
@@ -288,73 +284,73 @@ export function MenuBuilder({
                     inputMode="decimal"
                     className="w-24 rounded-md border border-black/15 px-2 py-1 text-sm"
                   />
-                  <label className="ml-auto inline-flex items-center gap-1 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={row.available}
-                      onChange={(e) =>
-                        updateRow(i, { available: e.target.checked })
-                      }
-                    />
-                    Available
-                  </label>
                 </div>
-                <div>
-                  <div className="text-xs font-medium text-black/60 mb-1">
-                    Dietary
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {DIETARY_TAGS.map((t) => {
-                      const on = row.dietary_tags.includes(t.value);
-                      return (
-                        <button
-                          key={t.value}
-                          type="button"
-                          onClick={() => toggleTag(i, "dietary_tags", t.value)}
-                          className={
-                            on
-                              ? "rounded-full border border-green-600 bg-green-100 text-green-800 text-xs px-2 py-0.5"
-                              : "rounded-full border border-black/15 text-black/60 text-xs px-2 py-0.5 hover:bg-black/5"
-                          }
-                        >
-                          {t.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs font-medium text-black/60 mb-1">
-                    Allergens
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {ALLERGENS.map((t) => {
-                      const on = row.allergens.includes(t.value);
-                      return (
-                        <button
-                          key={t.value}
-                          type="button"
-                          onClick={() => toggleTag(i, "allergens", t.value)}
-                          className={
-                            on
-                              ? "rounded-full border border-amber-600 bg-amber-100 text-amber-800 text-xs px-2 py-0.5"
-                              : "rounded-full border border-black/15 text-black/60 text-xs px-2 py-0.5 hover:bg-black/5"
-                          }
-                        >
-                          {t.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeRow(i)}
-                  className="text-sm text-red-600 hover:underline"
-                >
-                  Remove
-                </button>
+                <label className="inline-flex items-center gap-1.5 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={row.available}
+                    onChange={(e) =>
+                      updateRow(i, { available: e.target.checked })
+                    }
+                  />
+                  Available
+                </label>
               </div>
+              <div>
+                <div className="text-xs font-medium text-black/60 mb-1">
+                  Dietary
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {DIETARY_TAGS.map((t) => {
+                    const on = row.dietary_tags.includes(t.value);
+                    return (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => toggleTag(i, "dietary_tags", t.value)}
+                        className={
+                          on
+                            ? "rounded-full border border-green-600 bg-green-100 text-green-800 text-xs px-2 py-0.5"
+                            : "rounded-full border border-black/15 text-black/60 text-xs px-2 py-0.5 hover:bg-black/5"
+                        }
+                      >
+                        {t.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-black/60 mb-1">
+                  Allergens
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {ALLERGENS.map((t) => {
+                    const on = row.allergens.includes(t.value);
+                    return (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => toggleTag(i, "allergens", t.value)}
+                        className={
+                          on
+                            ? "rounded-full border border-amber-600 bg-amber-100 text-amber-800 text-xs px-2 py-0.5"
+                            : "rounded-full border border-black/15 text-black/60 text-xs px-2 py-0.5 hover:bg-black/5"
+                        }
+                      >
+                        {t.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeRow(i)}
+                className="text-sm text-red-600 hover:underline"
+              >
+                Remove
+              </button>
             </div>
           ))}
         </div>
