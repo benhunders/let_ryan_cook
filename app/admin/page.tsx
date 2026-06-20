@@ -22,10 +22,9 @@ export default async function AdminPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Chef dashboard</h1>
-        <div className="flex items-center gap-3">
-          <Link
+        <div className="flex flex-wrap items-center gap-2">          <Link
             href="/admin/users"
             className="rounded-md border border-black/15 px-4 py-2 font-medium hover:bg-black/5"
           >
