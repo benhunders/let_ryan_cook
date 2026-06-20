@@ -74,11 +74,11 @@ export default async function AdminPage() {
               <span
                 className={
                   menu.published
-                    ? "rounded-full bg-green-100 text-green-700 text-xs px-2.5 py-1"
-                    : "rounded-full bg-black/10 text-black/60 text-xs px-2.5 py-1"
+                    ? "shrink-0 rounded-full bg-green-100 text-green-700 text-xs font-medium px-2.5 py-1"
+                    : "shrink-0 rounded-full bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-1"
                 }
               >
-                {menu.published ? "Published" : "Draft"}
+                {menu.published ? "Published" : "● Draft"}
               </span>
             </Link>
           ))}
