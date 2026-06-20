@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ImageUpload } from "./ImageUpload";
@@ -503,6 +504,16 @@ export function MenuBuilder({
         >
           {published ? "Unpublish" : "Save draft"}
         </button>
+        {menuId && (
+          <Link
+            href={`/admin/menus/${menuId}/preview`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md border border-black/15 px-6 py-2.5 font-medium hover:bg-black/5"
+          >
+            Preview
+          </Link>
+        )}
         {savedNote && (
           <span className="text-sm font-medium text-green-700">{savedNote}</span>
         )}
