@@ -41,7 +41,7 @@ export function DishCard({
           <h3 className="font-semibold leading-snug">{dish.name}</h3>
           {dish.price != null && (
             <span className="text-brand font-semibold whitespace-nowrap">
-              ${dish.price.toFixed(2)}
+              €{dish.price.toFixed(2)}
             </span>
           )}
         </div>

@@ -114,7 +114,7 @@ export default async function OrdersPage() {
                         </span>
                         {dish?.price != null && (
                           <span className="text-black/50 whitespace-nowrap">
-                            ${(dish.price * it.quantity).toFixed(2)}
+                            €{(dish.price * it.quantity).toFixed(2)}
                           </span>
                         )}
                       </div>
