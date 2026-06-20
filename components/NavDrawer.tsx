@@ -2,10 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 
 // Client-side hamburger + left slide-in drawer. The server `Nav` passes the
 // auth-derived data so this stays a thin interactive shell.
+//
+// The overlay (backdrop + drawer) is rendered into a portal on document.body.
+// This is important: the header uses `backdrop-blur`, and an element with
+// backdrop-filter becomes the containing block for fixed-position descendants —
+// which would otherwise clip the drawer to the header's height. Portaling to
+// body lets the fixed elements size against the real viewport.
 export function NavDrawer({
   isLoggedIn,
   isAdmin,
@@ -17,6 +24,15 @@ export function NavDrawer({
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+
+  // Portals need a DOM target. useSyncExternalStore gives an SSR-safe
+  // "are we on the client yet" flag without setState-in-effect: false during
+  // SSR/first render, true once hydrated.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   // While open: lock body scroll and close on Escape.
   useEffect(() => {
@@ -48,30 +64,8 @@ export function NavDrawer({
     return href === "/" ? pathname === "/" : pathname.startsWith(href);
   }
 
-  return (
+  const overlay = (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Open menu"
-        aria-expanded={open}
-        className="-ml-2 rounded-md p-2 hover:bg-black/5"
-      >
-        <svg
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        >
-          <line x1="3" y1="6" x2="21" y2="6" />
-          <line x1="3" y1="12" x2="21" y2="12" />
-          <line x1="3" y1="18" x2="21" y2="18" />
-        </svg>
-      </button>
-
       {/* Backdrop */}
       <div
         onClick={() => setOpen(false)}
@@ -86,11 +80,11 @@ export function NavDrawer({
         role="dialog"
         aria-modal="true"
         aria-label="Navigation"
-        className={`fixed left-0 top-0 z-50 flex h-full w-72 max-w-[80%] flex-col bg-white shadow-xl transition-transform duration-200 ${
+        className={`fixed left-0 top-0 z-50 flex h-dvh w-72 max-w-[80%] flex-col bg-white shadow-xl transition-transform duration-200 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex h-14 items-center justify-between border-b border-black/10 px-4">
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-black/10 px-4">
           <span className="text-lg font-bold text-brand">Let Him Cook 🍳</span>
           <button
             type="button"
@@ -113,7 +107,7 @@ export function NavDrawer({
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-2">
+        <nav className="min-h-0 flex-1 overflow-y-auto p-2">
           {links.map((l) => (
             <Link
               key={l.href}
@@ -131,7 +125,7 @@ export function NavDrawer({
           ))}
         </nav>
 
-        <div className="border-t border-black/10 p-4">
+        <div className="shrink-0 border-t border-black/10 p-4">
           {isLoggedIn ? (
             <>
               {displayName && (
@@ -159,6 +153,34 @@ export function NavDrawer({
           )}
         </div>
       </aside>
+    </>
+  );
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Open menu"
+        aria-expanded={open}
+        className="-ml-2 rounded-md p-2 hover:bg-black/5"
+      >
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+
+      {mounted && createPortal(overlay, document.body)}
     </>
   );
 }
