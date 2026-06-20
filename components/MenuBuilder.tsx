@@ -32,6 +32,24 @@ function emptyRow(): Row {
 
 const SUGGESTED_MIN = 6;
 
+// Format a Date as a value for <input type="datetime-local"> in local time.
+function toLocalInput(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
+}
+
+// Suggested deadline: Friday 21:00 of the menu's week (or the next Friday if no
+// week is set yet). Gives Ryan the weekend to shop and cook.
+function suggestedDeadline(weekStart: string): string {
+  const base = weekStart ? new Date(weekStart + "T00:00:00") : new Date();
+  const daysUntilFriday = (5 - base.getDay() + 7) % 7;
+  base.setDate(base.getDate() + daysUntilFriday);
+  base.setHours(21, 0, 0, 0);
+  return toLocalInput(base);
+}
+
 export function MenuBuilder({
   menu,
   dishes,
@@ -43,6 +61,16 @@ export function MenuBuilder({
 
   const [title, setTitle] = useState(menu?.title ?? "");
   const [weekStart, setWeekStart] = useState(menu?.week_start ?? "");
+  const [deadline, setDeadline] = useState(
+    menu?.order_deadline
+      ? toLocalInput(new Date(menu.order_deadline))
+      : suggestedDeadline(menu?.week_start ?? "")
+  );
+  // Once the chef edits the deadline (or one was already saved), stop
+  // auto-suggesting it when the week date changes.
+  const [deadlineTouched, setDeadlineTouched] = useState(
+    !!menu?.order_deadline
+  );
   const [published, setPublished] = useState(menu?.published ?? false);
   // Track the menu id and which dishes are persisted in state, so saving
   // repeatedly in place (draft workflow) updates rows instead of duplicating
@@ -147,6 +175,7 @@ export function MenuBuilder({
         .update({
           title: title.trim(),
           week_start: weekStart || null,
+          order_deadline: deadline ? new Date(deadline).toISOString() : null,
           published: nextPublished,
         })
         .eq("id", id);
@@ -160,6 +189,7 @@ export function MenuBuilder({
         .insert({
           title: title.trim(),
           week_start: weekStart || null,
+          order_deadline: deadline ? new Date(deadline).toISOString() : null,
           published: nextPublished,
           created_by: user.id,
         })
@@ -279,11 +309,32 @@ export function MenuBuilder({
             type="date"
             value={weekStart}
             onChange={(e) => {
-              setWeekStart(e.target.value);
+              const v = e.target.value;
+              setWeekStart(v);
+              if (!deadlineTouched) setDeadline(suggestedDeadline(v));
               setSavedNote(null);
             }}
             className="w-full rounded-md border border-black/15 px-3 py-2"
           />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="block text-sm font-medium mb-1">
+            Order deadline
+          </label>
+          <input
+            type="datetime-local"
+            value={deadline}
+            onChange={(e) => {
+              setDeadline(e.target.value);
+              setDeadlineTouched(true);
+              setSavedNote(null);
+            }}
+            className="w-full rounded-md border border-black/15 px-3 py-2"
+          />
+          <p className="mt-1 text-xs text-black/50">
+            Customers can order until this time. Defaults to Friday 21:00 so
+            there&apos;s time to shop and cook.
+          </p>
         </div>
         <div className="flex items-end">
           <div className="text-sm">
