@@ -5,6 +5,7 @@ import { DishCard } from "@/components/DishCard";
 import { OrderForm } from "@/components/OrderForm";
 import { statusChipClass, statusLabel } from "@/lib/orderStatus";
 import { averagesByDish } from "@/lib/ratings";
+import { DeadlineLabel } from "@/components/DeadlineLabel";
 
 export const dynamic = "force-dynamic";
 
@@ -84,6 +85,14 @@ export default async function Home() {
     (d) => (d.allergens ?? []).length > 0 || (d.dietary_tags ?? []).length > 0
   );
 
+  // Per-request server component (force-dynamic): reading the clock here is
+  // intentional, to evaluate the order deadline against "now".
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
+  const deadlinePassed = menu.order_deadline
+    ? new Date(menu.order_deadline).getTime() <= nowMs
+    : false;
+
   return (
     <div>
       <div className="mb-6">
@@ -91,6 +100,11 @@ export default async function Home() {
           {menu.week_start ? `Week of ${formatWeek(menu.week_start)}` : "This week"}
         </p>
         <h1 className="text-3xl font-bold">{menu.title}</h1>
+        {menu.order_deadline && !deadlinePassed && (
+          <p className="mt-1 text-sm text-black/70">
+            🕒 Order by <DeadlineLabel iso={menu.order_deadline} />
+          </p>
+        )}
         {orderStatus && (
           <p className="mt-2 text-sm text-black/60">
             Your order:{" "}
@@ -111,7 +125,25 @@ export default async function Home() {
         )}
       </div>
 
-      {user ? (
+      {deadlinePassed ? (
+        <>
+          <div className="mb-5 rounded-lg bg-amber-50 text-amber-800 px-4 py-3 text-sm">
+            Ordering for this menu has closed
+            {menu.order_deadline ? (
+              <>
+                {" "}
+                (deadline was <DeadlineLabel iso={menu.order_deadline} />)
+              </>
+            ) : null}
+            .{user ? " You can still view your order under “My order”." : ""}
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {(dishes ?? []).map((d) => (
+              <DishCard key={d.id} dish={d} rating={ratingByDish.get(d.id)} />
+            ))}
+          </div>
+        </>
+      ) : user ? (
         <OrderForm
           menuId={menu.id}
           dishes={dishes ?? []}

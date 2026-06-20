@@ -147,6 +147,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          order_deadline: string | null
           published: boolean
           title: string
           week_start: string | null
@@ -155,6 +156,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          order_deadline?: string | null
           published?: boolean
           title: string
           week_start?: string | null
@@ -163,6 +165,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          order_deadline?: string | null
           published?: boolean
           title?: string
           week_start?: string | null
