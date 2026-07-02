@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ImageUpload } from "./ImageUpload";
 import { ALLERGENS, DIETARY_TAGS } from "@/lib/dietary";
+import { dishImageStoragePath } from "@/lib/images";
+import { saveMenuAction } from "@/app/admin/actions";
 import type { Menu, Dish } from "@/types/database";
 
 type Row = {
@@ -73,12 +75,20 @@ export function MenuBuilder({
     !!menu?.order_deadline
   );
   const [published, setPublished] = useState(menu?.published ?? false);
-  // Track the menu id and which dishes are persisted in state, so saving
-  // repeatedly in place (draft workflow) updates rows instead of duplicating
-  // them and creates the menu only once.
+  const [ordersLocked, setOrdersLocked] = useState(
+    menu?.orders_locked ?? false
+  );
+  // Track the menu id so saving repeatedly in place (draft workflow) updates
+  // the same menu, and the saved image urls so replaced uploads get removed
+  // from Storage after a successful save.
   const [menuId, setMenuId] = useState<string | undefined>(menu?.id);
-  const [savedDishIds, setSavedDishIds] = useState<Set<string>>(
-    () => new Set((dishes ?? []).map((d) => d.id))
+  const [savedImageUrls, setSavedImageUrls] = useState<Set<string>>(
+    () =>
+      new Set(
+        (dishes ?? [])
+          .map((d) => d.image_url)
+          .filter((u): u is string => !!u)
+      )
   );
   const [savedNote, setSavedNote] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>(() =>
@@ -127,9 +137,9 @@ export function MenuBuilder({
 
   const filledCount = rows.filter((r) => r.name.trim()).length;
 
-  // Persist the menu + its dishes. Captures new dish ids back into state so
-  // saving repeatedly in place (the draft workflow) updates rows instead of
-  // creating duplicates, and inserts the menu only once.
+  // Persist the menu + its dishes in ONE transaction via the save_menu RPC
+  // (through a server action, which also refreshes the cached public menu).
+  // Half-saved menus are impossible: either everything commits or nothing.
   async function persist(
     nextPublished: boolean,
     requireDish: boolean
@@ -153,112 +163,75 @@ export function MenuBuilder({
     }
 
     setSaving(true);
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setSaving(false);
-      setError("Your session expired — please sign in again.");
-      return false;
-    }
 
-    function fail(message: string) {
-      setSaving(false);
-      setError(message);
-    }
+    const filled = rows
+      .map((r, idx) => ({ r, idx }))
+      .filter(({ r }) => r.name.trim());
 
-    // 1. Create the menu once, then update it on later saves.
-    let id = menuId;
-    if (id) {
-      const { error: e } = await supabase
-        .from("menus")
-        .update({
-          title: title.trim(),
-          week_start: weekStart || null,
-          order_deadline: deadline ? new Date(deadline).toISOString() : null,
-          published: nextPublished,
-        })
-        .eq("id", id);
-      if (e) {
-        fail(e.message);
-        return false;
-      }
-    } else {
-      const { data, error: e } = await supabase
-        .from("menus")
-        .insert({
-          title: title.trim(),
-          week_start: weekStart || null,
-          order_deadline: deadline ? new Date(deadline).toISOString() : null,
-          published: nextPublished,
-          created_by: user.id,
-        })
-        .select("id")
-        .single();
-      if (e || !data) {
-        fail(e?.message ?? "Could not create the menu.");
-        return false;
-      }
-      id = data.id;
-    }
-
-    // 2. Delete dishes removed since the last save.
-    const keptIds = new Set(rows.filter((r) => r.id).map((r) => r.id!));
-    const toDelete = [...savedDishIds].filter((did) => !keptIds.has(did));
-    if (toDelete.length) {
-      const { error: e } = await supabase
-        .from("dishes")
-        .delete()
-        .in("id", toDelete);
-      if (e) {
-        fail(e.message);
-        return false;
-      }
-    }
-
-    // 3. Upsert each filled dish, capturing new ids back into the rows.
-    const updatedRows = [...rows];
-    for (let i = 0; i < updatedRows.length; i++) {
-      const r = updatedRows[i];
-      if (!r.name.trim()) continue;
-      const fields = {
-        name: r.name.trim(),
-        description: r.description.trim() || null,
-        price: r.price.trim() ? Number(r.price) : null,
-        image_url: r.image_url.trim() || null,
-        position: i,
+    const result = await saveMenuAction({
+      menuId: menuId ?? null,
+      title: title.trim(),
+      weekStart: weekStart || null,
+      orderDeadline: deadline ? new Date(deadline).toISOString() : null,
+      published: nextPublished,
+      ordersLocked,
+      dishes: filled.map(({ r }) => ({
+        id: r.id ?? null,
+        name: r.name,
+        description: r.description,
+        price: r.price,
+        image_url: r.image_url,
         available: r.available,
         allergens: r.allergens,
         dietary_tags: r.dietary_tags,
-      };
-      if (r.id) {
-        const { error: e } = await supabase
-          .from("dishes")
-          .update(fields)
-          .eq("id", r.id);
-        if (e) {
-          fail(e.message);
-          return false;
-        }
-      } else {
-        const { data, error: e } = await supabase
-          .from("dishes")
-          .insert({ ...fields, menu_id: id! })
-          .select("id")
-          .single();
-        if (e || !data) {
-          fail(e?.message ?? "Could not save a dish.");
-          return false;
-        }
-        updatedRows[i] = { ...r, id: data.id };
-      }
+      })),
+    });
+
+    if (result.error || !result.menuId) {
+      setSaving(false);
+      setError(result.error ?? "Could not save the menu.");
+      return false;
+    }
+    const id = result.menuId;
+
+    const supabase = createClient();
+
+    // Capture server-assigned dish ids back into the rows (they come back in
+    // position order, matching the payload order) so the next in-place save
+    // updates instead of duplicating.
+    const { data: fresh } = await supabase
+      .from("dishes")
+      .select("id, image_url")
+      .eq("menu_id", id)
+      .order("position", { ascending: true });
+    const updatedRows = [...rows];
+    if (fresh && fresh.length === filled.length) {
+      filled.forEach(({ idx }, i) => {
+        updatedRows[idx] = { ...updatedRows[idx], id: fresh[i].id };
+      });
+      setRows(updatedRows);
     }
 
-    setRows(updatedRows);
+    // Best-effort: remove uploads that no longer back any dish from Storage.
+    const currentUrls = new Set(
+      (fresh ?? [])
+        .map((d) => d.image_url)
+        .filter((u): u is string => !!u)
+    );
+    const orphanPaths = [...savedImageUrls]
+      .filter((u) => !currentUrls.has(u))
+      .map(dishImageStoragePath)
+      .filter((p): p is string => !!p);
+    if (orphanPaths.length) {
+      await supabase.storage
+        .from("dish-images")
+        .remove(orphanPaths)
+        .catch(() => {});
+    }
+    setSavedImageUrls(currentUrls);
+
     setMenuId(id);
     setPublished(nextPublished);
-    setSavedDishIds(new Set(updatedRows.filter((r) => r.id).map((r) => r.id!)));
     setSaving(false);
     return true;
   }
@@ -337,7 +310,24 @@ export function MenuBuilder({
             there&apos;s time to shop and cook.
           </p>
         </div>
-        <div className="flex items-end">
+        <div className="flex flex-col justify-end gap-2">
+          <label className="inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={ordersLocked}
+              onChange={(e) => {
+                setOrdersLocked(e.target.checked);
+                setSavedNote(null);
+              }}
+              className="h-4 w-4"
+            />
+            <span>
+              Close ordering now{" "}
+              <span className="text-black/50">
+                (stops new orders before the deadline)
+              </span>
+            </span>
+          </label>
           <div className="text-sm">
             <span className="text-black/50">Status: </span>
             <span

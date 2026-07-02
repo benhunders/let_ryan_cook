@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { Dish } from "@/types/database";
 import { ALLERGENS, DIETARY_TAGS, labelFor } from "@/lib/dietary";
+import { isSupabaseImage } from "@/lib/images";
 
 // Presentational dish card. Pass interactive controls (stepper, note) as children.
 export function DishCard({
@@ -24,6 +25,7 @@ export function DishCard({
             fill
             sizes="(max-width: 768px) 100vw, 33vw"
             className="object-cover"
+            unoptimized={!isSupabaseImage(dish.image_url)}
           />
         ) : (
           <div className="flex items-center justify-center h-full text-5xl">

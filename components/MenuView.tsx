@@ -46,7 +46,7 @@ export function MenuView({
     ? new Date(menu.order_deadline).getTime() <= nowMs
     : false;
   // In preview, admins can always order so they can test the flow.
-  const closed = !preview && deadlinePassed;
+  const closed = !preview && (deadlinePassed || menu.orders_locked);
 
   return (
     <div>
@@ -100,7 +100,7 @@ export function MenuView({
         <>
           <div className="mb-5 rounded-lg bg-amber-50 text-amber-800 px-4 py-3 text-sm">
             Ordering for this menu has closed
-            {menu.order_deadline ? (
+            {deadlinePassed && menu.order_deadline ? (
               <>
                 {" "}
                 (deadline was <DeadlineLabel iso={menu.order_deadline} />)

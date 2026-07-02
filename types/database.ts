@@ -148,6 +148,7 @@ export type Database = {
           created_by: string | null
           id: string
           order_deadline: string | null
+          orders_locked: boolean
           published: boolean
           title: string
           week_start: string | null
@@ -157,6 +158,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           order_deadline?: string | null
+          orders_locked?: boolean
           published?: boolean
           title: string
           week_start?: string | null
@@ -166,6 +168,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           order_deadline?: string | null
+          orders_locked?: boolean
           published?: boolean
           title?: string
           week_start?: string | null
@@ -182,21 +185,27 @@ export type Database = {
       }
       order_items: {
         Row: {
-          dish_id: string
+          dish_id: string | null
+          dish_name: string | null
+          dish_price: number | null
           id: string
           note: string | null
           order_id: string
           quantity: number
         }
         Insert: {
-          dish_id: string
+          dish_id?: string | null
+          dish_name?: string | null
+          dish_price?: number | null
           id?: string
           note?: string | null
           order_id: string
           quantity?: number
         }
         Update: {
-          dish_id?: string
+          dish_id?: string | null
+          dish_name?: string | null
+          dish_price?: number | null
           id?: string
           note?: string | null
           order_id?: string
@@ -264,6 +273,33 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          is_admin: boolean
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          is_admin?: boolean
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          is_admin?: boolean
+        }
+        Relationships: []
+      }
       ratings: {
         Row: {
           comment: string | null
@@ -306,42 +342,37 @@ export type Database = {
           },
         ]
       }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string
-          email: string | null
-          full_name: string | null
-          id: string
-          is_admin: boolean
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string
-          email?: string | null
-          full_name?: string | null
-          id: string
-          is_admin?: boolean
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string
-          email?: string | null
-          full_name?: string | null
-          id?: string
-          is_admin?: boolean
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       add_admin: { Args: { target_email: string }; Returns: undefined }
+      admin_emails: { Args: Record<PropertyKey, never>; Returns: string[] }
       delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined }
+      dish_orderable: {
+        Args: { p_dish_id: string; p_order_id: string }
+        Returns: boolean
+      }
       is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
+      order_open_for: { Args: { p_order_id: string }; Returns: boolean }
       remove_admin: { Args: { target_email: string }; Returns: undefined }
+      save_menu: {
+        Args: {
+          p_dishes: Json
+          p_menu_id: string | null
+          p_order_deadline: string | null
+          p_orders_locked: boolean
+          p_published: boolean
+          p_title: string
+          p_week_start: string | null
+        }
+        Returns: string
+      }
+      submit_order: {
+        Args: { p_items: Json; p_menu_id: string; p_notes: string | null }
+        Returns: string | null
+      }
     }
     Enums: {
       [_ in never]: never
