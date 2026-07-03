@@ -20,9 +20,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
+  // Order + items in one query; item names come from the order-time snapshot.
   const { data: order } = await supabase
     .from("orders")
-    .select("id, notes")
+    .select("id, notes, order_items(quantity, note, dish_name)")
     .eq("menu_id", menuId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -36,21 +37,10 @@ export async function POST(request: Request) {
     .eq("id", menuId)
     .maybeSingle();
 
-  const { data: items } = await supabase
-    .from("order_items")
-    .select("quantity, note, dish_id")
-    .eq("order_id", order.id);
-
-  const dishIds = [...new Set((items ?? []).map((i) => i.dish_id))];
-  const { data: dishes } = dishIds.length
-    ? await supabase.from("dishes").select("id, name").in("id", dishIds)
-    : { data: [] };
-  const dishName = new Map((dishes ?? []).map((d) => [d.id, d.name]));
-
-  const lines = (items ?? [])
+  const lines = order.order_items
     .map(
       (i) =>
-        `<li>${i.quantity} × ${dishName.get(i.dish_id) ?? "Dish"}${
+        `<li>${i.quantity} × ${i.dish_name ?? "Dish"}${
           i.note ? ` <span style="color:#888">— ${i.note}</span>` : ""
         }</li>`
     )
@@ -76,15 +66,10 @@ export async function POST(request: Request) {
     });
   }
 
-  // Alert to admins (any authenticated user may read profiles under RLS).
-  const { data: admins } = await supabase
-    .from("profiles")
-    .select("email")
-    .eq("is_admin", true);
-  const adminEmails = (admins ?? [])
-    .map((a) => a.email)
-    .filter((e): e is string => !!e);
-  if (adminEmails.length) {
+  // Alert to admins. Profiles are no longer readable across users, so the
+  // addresses come from the admin_emails() database function instead.
+  const { data: adminEmails } = await supabase.rpc("admin_emails");
+  if (adminEmails && adminEmails.length) {
     await sendEmail({
       to: adminEmails,
       subject: `New order from ${customerName} — ${menuTitle}`,

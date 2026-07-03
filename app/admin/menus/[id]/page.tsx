@@ -16,60 +16,64 @@ export default async function EditMenuPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: menu } = await supabase
+  const { data: menuRow, error: menuError } = await supabase
     .from("menus")
-    .select("*")
+    .select("*, dishes(*)")
     .eq("id", id)
     .maybeSingle();
-  if (!menu) notFound();
+  if (menuError) throw new Error(`Failed to load the menu: ${menuError.message}`);
+  if (!menuRow) notFound();
 
-  const { data: dishes } = await supabase
-    .from("dishes")
-    .select("*")
-    .eq("menu_id", id)
-    .order("position", { ascending: true });
+  const { dishes: menuDishes, ...menu } = menuRow;
+  const dishes = (menuDishes ?? []).sort((a, b) => a.position - b.position);
 
-  // Orders for this menu (admins can read all via RLS).
-  const { data: orders } = await supabase
+  // Orders with customer + items in one query (admins read all via RLS).
+  // Item names/prices come from the order-time snapshot, so the view stays
+  // truthful even after dishes are edited or removed.
+  const { data: orders, error: ordersError } = await supabase
     .from("orders")
-    .select("*")
+    .select(
+      "*, profiles(full_name, email), order_items(id, dish_id, quantity, note, dish_name, dish_price)"
+    )
     .eq("menu_id", id)
     .order("created_at", { ascending: true });
-
-  const orderIds = (orders ?? []).map((o) => o.id);
-  const userIds = [...new Set((orders ?? []).map((o) => o.user_id))];
-
-  const { data: profiles } = userIds.length
-    ? await supabase
-        .from("profiles")
-        .select("id, full_name, email")
-        .in("id", userIds)
-    : { data: [] };
-  const { data: items } = orderIds.length
-    ? await supabase.from("order_items").select("*").in("order_id", orderIds)
-    : { data: [] };
+  if (ordersError)
+    throw new Error(`Failed to load orders: ${ordersError.message}`);
 
   // Average rating per dish on this menu (admin aggregate view).
-  const dishIds = (dishes ?? []).map((d) => d.id);
+  const dishIds = dishes.map((d) => d.id);
   const { data: ratings } = dishIds.length
-    ? await supabase.from("ratings").select("dish_id, rating").in("dish_id", dishIds)
+    ? await supabase
+        .from("ratings")
+        .select("dish_id, rating")
+        .in("dish_id", dishIds)
     : { data: [] };
   const ratingByDish = averagesByDish(ratings ?? []);
 
-  const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
-  const dishById = new Map((dishes ?? []).map((d) => [d.id, d]));
-
-  // Tally total quantity per dish across all orders.
-  const tally = new Map<string, number>();
-  for (const it of items ?? []) {
-    tally.set(it.dish_id, (tally.get(it.dish_id) ?? 0) + it.quantity);
+  // Tally total quantity per dish across all orders, keyed so lines from
+  // since-deleted dishes (dish_id null, snapshot name kept) still show up.
+  const allItems = (orders ?? []).flatMap((o) => o.order_items);
+  const tally = new Map<string, { name: string; qty: number; dishId: string | null }>();
+  for (const it of allItems) {
+    const key = it.dish_id ?? `deleted:${it.dish_name ?? "Dish"}`;
+    const cur = tally.get(key) ?? {
+      name: it.dish_name ?? "Dish",
+      qty: 0,
+      dishId: it.dish_id,
+    };
+    cur.qty += it.quantity;
+    tally.set(key, cur);
   }
+
+  const orderTotal = (items: typeof allItems) =>
+    items.reduce((s, it) => s + (it.dish_price ?? 0) * it.quantity, 0);
+  const revenue = orderTotal(allItems);
 
   return (
     <div className="space-y-10">
       <div>
         <h1 className="text-2xl font-bold mb-6">Edit menu</h1>
-        <MenuBuilder menu={menu} dishes={dishes ?? []} />
+        <MenuBuilder menu={menu} dishes={dishes} />
       </div>
 
       <section>
@@ -88,20 +92,35 @@ export default async function EditMenuPage({
           <>
             {/* Prep tally */}
             <div className="rounded-xl border border-black/10 bg-white p-4 mb-5">
-              <h3 className="font-semibold mb-2">Prep totals</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold">Prep totals</h3>
+                {revenue > 0 && (
+                  <span className="text-sm text-black/60">
+                    Total{" "}
+                    <span className="font-medium tabular-nums">
+                      €{revenue.toFixed(2)}
+                    </span>
+                  </span>
+                )}
+              </div>
               <ul className="text-sm grid gap-1 sm:grid-cols-2">
-                {[...tally.entries()].map(([dishId, qty]) => {
-                  const r = ratingByDish.get(dishId);
+                {[...tally.values()].map((row) => {
+                  const r = row.dishId ? ratingByDish.get(row.dishId) : null;
                   return (
-                    <li key={dishId} className="flex justify-between gap-3">
-                      <span>{dishById.get(dishId)?.name ?? "Dish"}</span>
+                    <li
+                      key={row.dishId ?? row.name}
+                      className="flex justify-between gap-3"
+                    >
+                      <span>{row.name}</span>
                       <span className="flex items-center gap-3">
                         {r && (
                           <span className="text-amber-600 tabular-nums">
                             ★ {r.avg.toFixed(1)} ({r.count})
                           </span>
                         )}
-                        <span className="font-medium tabular-nums">×{qty}</span>
+                        <span className="font-medium tabular-nums">
+                          ×{row.qty}
+                        </span>
                       </span>
                     </li>
                   );
@@ -112,10 +131,7 @@ export default async function EditMenuPage({
             {/* Per-customer breakdown */}
             <div className="space-y-3">
               {orders.map((order) => {
-                const profile = profileById.get(order.user_id);
-                const orderItems = (items ?? []).filter(
-                  (i) => i.order_id === order.id
-                );
+                const total = orderTotal(order.order_items);
                 return (
                   <div
                     key={order.id}
@@ -123,20 +139,30 @@ export default async function EditMenuPage({
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <div className="font-semibold">
-                        {profile?.full_name ?? profile?.email ?? "Customer"}
+                        {order.profiles?.full_name ??
+                          order.profiles?.email ??
+                          "Customer"}
                       </div>
-                      <OrderStatusControl orderId={order.id} status={order.status} />
+                      <OrderStatusControl
+                        orderId={order.id}
+                        status={order.status}
+                      />
                     </div>
                     <ul className="text-sm divide-y divide-black/5">
-                      {orderItems.map((it) => (
+                      {order.order_items.map((it) => (
                         <li key={it.id} className="py-1.5">
-                          {it.quantity} × {dishById.get(it.dish_id)?.name ?? "Dish"}
+                          {it.quantity} × {it.dish_name ?? "Dish"}
                           {it.note && (
                             <span className="text-black/50"> — {it.note}</span>
                           )}
                         </li>
                       ))}
                     </ul>
+                    {total > 0 && (
+                      <p className="mt-2 text-sm text-black/60 text-right tabular-nums">
+                        €{total.toFixed(2)}
+                      </p>
+                    )}
                     {order.notes && (
                       <p className="mt-2 text-sm text-black/60">
                         <span className="font-medium">Notes:</span>{" "}

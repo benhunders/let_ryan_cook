@@ -8,17 +8,17 @@ export default async function AdminPage() {
   await requireAdmin();
   const supabase = await createClient();
 
-  const { data: menus } = await supabase
+  // Menus with their order count aggregated in the database (previously this
+  // fetched every order row ever just to count them).
+  const { data: menus, error } = await supabase
     .from("menus")
-    .select("*")
+    .select("*, orders(count)")
     .order("created_at", { ascending: false });
+  if (error) throw new Error(`Failed to load menus: ${error.message}`);
 
-  // Count orders per menu.
-  const { data: orders } = await supabase.from("orders").select("id, menu_id");
-  const orderCount = new Map<string, number>();
-  for (const o of orders ?? []) {
-    orderCount.set(o.menu_id, (orderCount.get(o.menu_id) ?? 0) + 1);
-  }
+  const orderCount = new Map(
+    (menus ?? []).map((m) => [m.id, m.orders[0]?.count ?? 0])
+  );
 
   return (
     <div>

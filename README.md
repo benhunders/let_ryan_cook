@@ -13,7 +13,8 @@ An UberEats-style app where **Ryan (the chef)** publishes a fresh menu each week
   freely), each with name, description, price, availability, and an image (upload to Supabase
   Storage **or** paste a URL). Publish toggle controls customer visibility.
 - **Weekly menu + ordering** (`/`) — customers browse the published menu and submit one
-  editable order per menu (per-dish quantity + note, plus an overall order note).
+  editable order per menu (per-dish quantity + note, plus an overall order note). Ordering
+  closes at the menu's deadline, or earlier via the chef's "Close ordering now" toggle.
 - **My orders** (`/orders`) — a customer's order history.
 - **Chef order view** (`/admin/menus/[id]`) — prep totals + per-customer breakdown.
 - **Roadmap:** automatic dish image search (Google/Unsplash) — scaffolded in
@@ -36,7 +37,26 @@ npm run dev
 
 ## Database
 Schema lives in `supabase/migrations/`. Tables: `profiles`, `menus`, `dishes`, `orders`,
-`order_items`, plus a public-read `dish-images` Storage bucket. Every table has RLS enabled.
+`order_items`, `feedback`, `ratings`, plus a public-read `dish-images` Storage bucket.
+Every table has RLS enabled.
+
+Writes go through two transactional RPCs rather than row-by-row requests:
+
+- **`submit_order(menu_id, notes, items)`** — saves a customer's whole order
+  atomically. The database validates everything: menu published, before the
+  deadline, not locked by the chef, dishes on that menu and available,
+  quantity 1–100. An empty item list withdraws the order.
+- **`save_menu(menu_id, title, week_start, deadline, published, locked, dishes)`**
+  — chef-only; saves menu meta + all dishes in one transaction (no more
+  half-saved menus).
+
+Order lines snapshot `dish_name`/`dish_price` at order time, so editing or
+deleting a dish never rewrites (or erases) a customer's order history.
+Profiles are readable only by their owner and admins.
+
+## CI
+GitHub Actions (`.github/workflows/ci.yml`) runs lint, typecheck, and a
+production build on every push/PR.
 
 ## Google sign-in setup (one-time)
 1. Create an OAuth client in the Google Cloud Console.

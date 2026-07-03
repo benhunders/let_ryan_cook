@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { DishCard } from "./DishCard";
 import { QuantityStepper } from "./QuantityStepper";
-import type { Dish } from "@/types/database";
+import type { Dish, Json } from "@/types/database";
 
 type ItemState = { quantity: number; note: string };
 
@@ -46,67 +46,39 @@ export function OrderForm({
     setError(null);
     setSaving(true);
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setSaving(false);
-      setError("Your session expired — please sign in again.");
-      return;
-    }
-
-    // One order per user per menu: upsert, then replace its items.
-    const { data: order, error: orderErr } = await supabase
-      .from("orders")
-      .upsert(
-        {
-          user_id: user.id,
-          menu_id: menuId,
-          notes: notes.trim() || null,
-          // status intentionally omitted: new orders default to 'submitted',
-          // and editing an existing order must not reset a chef-set status.
-        },
-        { onConflict: "user_id,menu_id" }
-      )
-      .select()
-      .single();
-
-    if (orderErr || !order) {
-      setSaving(false);
-      setError(orderErr?.message ?? "Could not save your order.");
-      return;
-    }
-
-    await supabase.from("order_items").delete().eq("order_id", order.id);
 
     const rows = Object.entries(items)
       .filter(([, i]) => i.quantity > 0)
       .map(([dish_id, i]) => ({
-        order_id: order.id,
         dish_id,
         quantity: i.quantity,
         note: i.note.trim() || null,
       }));
 
-    if (rows.length) {
-      const { error: itemsErr } = await supabase
-        .from("order_items")
-        .insert(rows);
-      if (itemsErr) {
-        setSaving(false);
-        setError(itemsErr.message);
-        return;
-      }
-    }
+    // The whole order (order row + all items) is saved in one transaction;
+    // the database also validates the deadline, availability and quantities.
+    // An empty selection withdraws the order.
+    const { error: rpcError } = await supabase.rpc("submit_order", {
+      p_menu_id: menuId,
+      p_notes: notes.trim() || null,
+      p_items: rows as unknown as Json,
+    });
 
     setSaving(false);
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
+    }
+
     setSaved(true);
-    // Fire-and-forget order notification (confirmation + admin alert).
-    fetch("/api/notify/order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ menuId }),
-    }).catch(() => {});
+    if (rows.length) {
+      // Fire-and-forget order notification (confirmation + admin alert).
+      fetch("/api/notify/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ menuId }),
+      }).catch(() => {});
+    }
     router.refresh();
   }
 

@@ -1,25 +1,15 @@
-import { createClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/auth";
 import { MenuView } from "@/components/MenuView";
-import { loadMenuViewData } from "@/lib/menuData";
+import { getPublishedMenuData, loadUserOrder } from "@/lib/menuData";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const supabase = await createClient();
-  const user = await getUser();
+  // Menu + dishes + ratings come from a shared cache (anonymous visitors
+  // don't touch Postgres); only the user's own order is fetched per request.
+  const [data, user] = await Promise.all([getPublishedMenuData(), getUser()]);
 
-  // Latest published menu.
-  const { data: menu } = await supabase
-    .from("menus")
-    .select("*")
-    .eq("published", true)
-    .order("week_start", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!menu) {
+  if (!data) {
     return (
       <div className="text-center mt-16">
         <h1 className="text-3xl font-bold mb-2">No menu yet 🍲</h1>
@@ -30,7 +20,17 @@ export default async function Home() {
     );
   }
 
-  const data = await loadMenuViewData(menu, user?.id ?? null);
+  const order = user
+    ? await loadUserOrder(data.menu.id, user.id)
+    : { initialItems: {}, initialNotes: "", orderStatus: null };
 
-  return <MenuView menu={menu} isLoggedIn={!!user} {...data} />;
+  return (
+    <MenuView
+      menu={data.menu}
+      dishes={data.dishes}
+      ratingByDish={data.ratingByDish}
+      isLoggedIn={!!user}
+      {...order}
+    />
+  );
 }
