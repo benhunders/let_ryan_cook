@@ -8,23 +8,34 @@ export default async function AdminPage() {
   await requireAdmin();
   const supabase = await createClient();
 
-  const { data: menus } = await supabase
+  // Menus with their order count aggregated in the database (previously this
+  // fetched every order row ever just to count them).
+  const { data: menus, error } = await supabase
     .from("menus")
-    .select("*")
+    .select("*, orders(count)")
     .order("created_at", { ascending: false });
+  if (error) throw new Error(`Failed to load menus: ${error.message}`);
 
-  // Count orders per menu.
-  const { data: orders } = await supabase.from("orders").select("id, menu_id");
-  const orderCount = new Map<string, number>();
-  for (const o of orders ?? []) {
-    orderCount.set(o.menu_id, (orderCount.get(o.menu_id) ?? 0) + 1);
-  }
+  const orderCount = new Map(
+    (menus ?? []).map((m) => [m.id, m.orders[0]?.count ?? 0])
+  );
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Chef dashboard</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">          <Link
+            href="/admin/users"
+            className="rounded-md border border-black/15 px-4 py-2 font-medium hover:bg-black/5"
+          >
+            Users
+          </Link>
+          <Link
+            href="/admin/feedback"
+            className="rounded-md border border-black/15 px-4 py-2 font-medium hover:bg-black/5"
+          >
+            Feedback
+          </Link>
           <Link
             href="/admin/settings"
             className="rounded-md border border-black/15 px-4 py-2 font-medium hover:bg-black/5"
@@ -63,11 +74,11 @@ export default async function AdminPage() {
               <span
                 className={
                   menu.published
-                    ? "rounded-full bg-green-100 text-green-700 text-xs px-2.5 py-1"
-                    : "rounded-full bg-black/10 text-black/60 text-xs px-2.5 py-1"
+                    ? "shrink-0 rounded-full bg-green-100 text-green-700 text-xs font-medium px-2.5 py-1"
+                    : "shrink-0 rounded-full bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-1"
                 }
               >
-                {menu.published ? "Published" : "Draft"}
+                {menu.published ? "Published" : "● Draft"}
               </span>
             </Link>
           ))}

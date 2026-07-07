@@ -42,9 +42,11 @@ export type Database = {
       }
       dishes: {
         Row: {
+          allergens: string[]
           available: boolean
           created_at: string
           description: string | null
+          dietary_tags: string[]
           id: string
           image_url: string | null
           menu_id: string
@@ -53,9 +55,11 @@ export type Database = {
           price: number | null
         }
         Insert: {
+          allergens?: string[]
           available?: boolean
           created_at?: string
           description?: string | null
+          dietary_tags?: string[]
           id?: string
           image_url?: string | null
           menu_id: string
@@ -64,9 +68,11 @@ export type Database = {
           price?: number | null
         }
         Update: {
+          allergens?: string[]
           available?: boolean
           created_at?: string
           description?: string | null
+          dietary_tags?: string[]
           id?: string
           image_url?: string | null
           menu_id?: string
@@ -84,11 +90,66 @@ export type Database = {
           },
         ]
       }
+      feedback: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          dish_id: string | null
+          id: string
+          menu_id: string | null
+          user_id: string
+        }
+        Insert: {
+          body: string
+          category?: string
+          created_at?: string
+          dish_id?: string | null
+          id?: string
+          menu_id?: string | null
+          user_id: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          dish_id?: string | null
+          id?: string
+          menu_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_dish_id_fkey"
+            columns: ["dish_id"]
+            isOneToOne: false
+            referencedRelation: "dishes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "menus"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menus: {
         Row: {
           created_at: string
           created_by: string | null
+          delivery_date: string | null
           id: string
+          order_deadline: string | null
+          orders_locked: boolean
           published: boolean
           title: string
           week_start: string | null
@@ -96,7 +157,10 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          delivery_date?: string | null
           id?: string
+          order_deadline?: string | null
+          orders_locked?: boolean
           published?: boolean
           title: string
           week_start?: string | null
@@ -104,7 +168,10 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          delivery_date?: string | null
           id?: string
+          order_deadline?: string | null
+          orders_locked?: boolean
           published?: boolean
           title?: string
           week_start?: string | null
@@ -121,21 +188,27 @@ export type Database = {
       }
       order_items: {
         Row: {
-          dish_id: string
+          dish_id: string | null
+          dish_name: string | null
+          dish_price: number | null
           id: string
           note: string | null
           order_id: string
           quantity: number
         }
         Insert: {
-          dish_id: string
+          dish_id?: string | null
+          dish_name?: string | null
+          dish_price?: number | null
           id?: string
           note?: string | null
           order_id: string
           quantity?: number
         }
         Update: {
-          dish_id?: string
+          dish_id?: string | null
+          dish_name?: string | null
+          dish_price?: number | null
           id?: string
           note?: string | null
           order_id?: string
@@ -164,7 +237,11 @@ export type Database = {
           id: string
           menu_id: string
           notes: string | null
+          paid: boolean
+          paid_at: string | null
+          payment_method: string
           status: string
+          status_updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -172,7 +249,11 @@ export type Database = {
           id?: string
           menu_id: string
           notes?: string | null
+          paid?: boolean
+          paid_at?: string | null
+          payment_method?: string
           status?: string
+          status_updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -180,7 +261,11 @@ export type Database = {
           id?: string
           menu_id?: string
           notes?: string | null
+          paid?: boolean
+          paid_at?: string | null
+          payment_method?: string
           status?: string
+          status_updated_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -227,15 +312,85 @@ export type Database = {
         }
         Relationships: []
       }
+      ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          dish_id: string
+          id: string
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          dish_id: string
+          id?: string
+          rating: number
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          dish_id?: string
+          id?: string
+          rating?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratings_dish_id_fkey"
+            columns: ["dish_id"]
+            isOneToOne: false
+            referencedRelation: "dishes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       add_admin: { Args: { target_email: string }; Returns: undefined }
+      admin_emails: { Args: Record<PropertyKey, never>; Returns: string[] }
       delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined }
+      dish_orderable: {
+        Args: { p_dish_id: string; p_order_id: string }
+        Returns: boolean
+      }
       is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
+      order_open_for: { Args: { p_order_id: string }; Returns: boolean }
       remove_admin: { Args: { target_email: string }; Returns: undefined }
+      save_menu: {
+        Args: {
+          p_delivery_date: string | null
+          p_dishes: Json
+          p_menu_id: string | null
+          p_order_deadline: string | null
+          p_orders_locked: boolean
+          p_published: boolean
+          p_title: string
+          p_week_start: string | null
+        }
+        Returns: string
+      }
+      submit_order: {
+        Args: {
+          p_items: Json
+          p_menu_id: string
+          p_notes: string | null
+          p_payment_method?: string
+        }
+        Returns: string | null
+      }
     }
     Enums: {
       [_ in never]: never
@@ -252,3 +407,5 @@ export type Menu = Database["public"]["Tables"]["menus"]["Row"]
 export type Dish = Database["public"]["Tables"]["dishes"]["Row"]
 export type Order = Database["public"]["Tables"]["orders"]["Row"]
 export type OrderItem = Database["public"]["Tables"]["order_items"]["Row"]
+export type Feedback = Database["public"]["Tables"]["feedback"]["Row"]
+export type Rating = Database["public"]["Tables"]["ratings"]["Row"]

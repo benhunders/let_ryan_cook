@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { DishCard } from "./DishCard";
 import { QuantityStepper } from "./QuantityStepper";
-import type { Dish } from "@/types/database";
+import { PAYMENT_METHODS } from "@/lib/payment";
+import type { Dish, Json } from "@/types/database";
 
 type ItemState = { quantity: number; note: string };
 
@@ -14,11 +15,15 @@ export function OrderForm({
   dishes,
   initialItems,
   initialNotes,
+  initialPaymentMethod = "cash",
+  ratingByDish = {},
 }: {
   menuId: string;
   dishes: Dish[];
   initialItems: Record<string, ItemState>;
   initialNotes: string;
+  initialPaymentMethod?: string;
+  ratingByDish?: Record<string, { avg: number; count: number }>;
 }) {
   const router = useRouter();
   const [items, setItems] = useState<Record<string, ItemState>>(() => {
@@ -29,6 +34,7 @@ export function OrderForm({
     return base;
   });
   const [notes, setNotes] = useState(initialNotes);
+  const [paymentMethod, setPaymentMethod] = useState(initialPaymentMethod);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,60 +50,40 @@ export function OrderForm({
     setError(null);
     setSaving(true);
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setSaving(false);
-      setError("Your session expired — please sign in again.");
-      return;
-    }
-
-    // One order per user per menu: upsert, then replace its items.
-    const { data: order, error: orderErr } = await supabase
-      .from("orders")
-      .upsert(
-        {
-          user_id: user.id,
-          menu_id: menuId,
-          notes: notes.trim() || null,
-          status: "submitted",
-        },
-        { onConflict: "user_id,menu_id" }
-      )
-      .select()
-      .single();
-
-    if (orderErr || !order) {
-      setSaving(false);
-      setError(orderErr?.message ?? "Could not save your order.");
-      return;
-    }
-
-    await supabase.from("order_items").delete().eq("order_id", order.id);
 
     const rows = Object.entries(items)
       .filter(([, i]) => i.quantity > 0)
       .map(([dish_id, i]) => ({
-        order_id: order.id,
         dish_id,
         quantity: i.quantity,
         note: i.note.trim() || null,
       }));
 
-    if (rows.length) {
-      const { error: itemsErr } = await supabase
-        .from("order_items")
-        .insert(rows);
-      if (itemsErr) {
-        setSaving(false);
-        setError(itemsErr.message);
-        return;
-      }
-    }
+    // The whole order (order row + all items) is saved in one transaction;
+    // the database also validates the deadline, availability and quantities.
+    // An empty selection withdraws the order.
+    const { error: rpcError } = await supabase.rpc("submit_order", {
+      p_menu_id: menuId,
+      p_notes: notes.trim() || null,
+      p_items: rows as unknown as Json,
+      p_payment_method: paymentMethod,
+    });
 
     setSaving(false);
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
+    }
+
     setSaved(true);
+    if (rows.length) {
+      // Fire-and-forget order notification (confirmation + admin alert).
+      fetch("/api/notify/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ menuId }),
+      }).catch(() => {});
+    }
     router.refresh();
   }
 
@@ -105,7 +91,7 @@ export function OrderForm({
     <div>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {dishes.map((d) => (
-          <DishCard key={d.id} dish={d}>
+          <DishCard key={d.id} dish={d} rating={ratingByDish[d.id]}>
             {d.available ? (
               <>
                 <QuantityStepper
@@ -129,6 +115,36 @@ export function OrderForm({
       </div>
 
       <div className="mt-6 rounded-xl border border-black/10 bg-white p-4">
+        <div className="mb-4">
+          <span className="block text-sm font-medium mb-1.5">
+            How will you pay?
+          </span>
+          <div className="flex gap-2">
+            {PAYMENT_METHODS.map((m) => {
+              const on = paymentMethod === m.value;
+              return (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => {
+                    setPaymentMethod(m.value);
+                    setSaved(false);
+                  }}
+                  aria-pressed={on}
+                  className={
+                    on
+                      ? "rounded-md border border-brand bg-brand/10 text-brand-dark px-4 py-1.5 text-sm font-medium"
+                      : "rounded-md border border-black/15 px-4 py-1.5 text-sm hover:bg-black/5"
+                  }
+                >
+                  {m.value === "cash" ? "💶 " : "🏦 "}
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <label className="block text-sm font-medium mb-1">
           Order notes (optional)
         </label>
@@ -139,7 +155,7 @@ export function OrderForm({
             setSaved(false);
           }}
           rows={2}
-          placeholder="Anything the chef should know? Allergies, pickup time, etc."
+          placeholder="Anything the chef should know? Allergies, a preferred delivery day, pickup time, etc."
           className="w-full rounded-md border border-black/15 px-3 py-2 text-sm"
         />
         {error && (

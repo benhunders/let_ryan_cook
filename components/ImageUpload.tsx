@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { isSupabaseImage } from "@/lib/images";
 
 // Dish image picker: upload a file to Supabase Storage OR paste an image URL.
 // The "Search images" button is a roadmap placeholder (see lib/imageSearch.ts).
@@ -45,6 +46,7 @@ export function ImageUpload({
             fill
             sizes="200px"
             className="object-cover"
+            unoptimized={!isSupabaseImage(value)}
           />
         ) : (
           <div className="flex items-center justify-center h-full text-3xl text-black/30">
