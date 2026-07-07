@@ -10,6 +10,7 @@ export type SaveMenuInput = {
   title: string;
   weekStart: string | null;
   orderDeadline: string | null;
+  deliveryDate: string | null;
   published: boolean;
   ordersLocked: boolean;
   dishes: {
@@ -37,6 +38,7 @@ export async function saveMenuAction(
     p_title: input.title,
     p_week_start: input.weekStart,
     p_order_deadline: input.orderDeadline,
+    p_delivery_date: input.deliveryDate,
     p_published: input.published,
     p_orders_locked: input.ordersLocked,
     p_dishes: input.dishes as unknown as Json,

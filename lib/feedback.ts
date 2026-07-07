@@ -5,7 +5,9 @@ export type FeedbackCategory =
   | "general"
   | "suggestion"
   | "compliment"
-  | "problem";
+  | "problem"
+  | "requested_dish"
+  | "dietary";
 
 export const FEEDBACK_CATEGORIES: { value: FeedbackCategory; label: string }[] =
   [
@@ -13,6 +15,8 @@ export const FEEDBACK_CATEGORIES: { value: FeedbackCategory; label: string }[] =
     { value: "suggestion", label: "Suggestion" },
     { value: "compliment", label: "Compliment" },
     { value: "problem", label: "Problem" },
+    { value: "requested_dish", label: "Dish request" },
+    { value: "dietary", label: "Dietary need" },
   ];
 
 export function categoryLabel(value: string): string {

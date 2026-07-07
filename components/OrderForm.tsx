@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { DishCard } from "./DishCard";
 import { QuantityStepper } from "./QuantityStepper";
+import { PAYMENT_METHODS } from "@/lib/payment";
 import type { Dish, Json } from "@/types/database";
 
 type ItemState = { quantity: number; note: string };
@@ -14,12 +15,14 @@ export function OrderForm({
   dishes,
   initialItems,
   initialNotes,
+  initialPaymentMethod = "cash",
   ratingByDish = {},
 }: {
   menuId: string;
   dishes: Dish[];
   initialItems: Record<string, ItemState>;
   initialNotes: string;
+  initialPaymentMethod?: string;
   ratingByDish?: Record<string, { avg: number; count: number }>;
 }) {
   const router = useRouter();
@@ -31,6 +34,7 @@ export function OrderForm({
     return base;
   });
   const [notes, setNotes] = useState(initialNotes);
+  const [paymentMethod, setPaymentMethod] = useState(initialPaymentMethod);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +66,7 @@ export function OrderForm({
       p_menu_id: menuId,
       p_notes: notes.trim() || null,
       p_items: rows as unknown as Json,
+      p_payment_method: paymentMethod,
     });
 
     setSaving(false);
@@ -110,6 +115,36 @@ export function OrderForm({
       </div>
 
       <div className="mt-6 rounded-xl border border-black/10 bg-white p-4">
+        <div className="mb-4">
+          <span className="block text-sm font-medium mb-1.5">
+            How will you pay?
+          </span>
+          <div className="flex gap-2">
+            {PAYMENT_METHODS.map((m) => {
+              const on = paymentMethod === m.value;
+              return (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => {
+                    setPaymentMethod(m.value);
+                    setSaved(false);
+                  }}
+                  aria-pressed={on}
+                  className={
+                    on
+                      ? "rounded-md border border-brand bg-brand/10 text-brand-dark px-4 py-1.5 text-sm font-medium"
+                      : "rounded-md border border-black/15 px-4 py-1.5 text-sm hover:bg-black/5"
+                  }
+                >
+                  {m.value === "cash" ? "💶 " : "🎟️ "}
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <label className="block text-sm font-medium mb-1">
           Order notes (optional)
         </label>
@@ -120,7 +155,7 @@ export function OrderForm({
             setSaved(false);
           }}
           rows={2}
-          placeholder="Anything the chef should know? Allergies, pickup time, etc."
+          placeholder="Anything the chef should know? Allergies, a preferred delivery day, pickup time, etc."
           className="w-full rounded-md border border-black/15 px-3 py-2 text-sm"
         />
         {error && (

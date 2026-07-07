@@ -22,7 +22,12 @@ export default async function Home() {
 
   const order = user
     ? await loadUserOrder(data.menu.id, user.id)
-    : { initialItems: {}, initialNotes: "", orderStatus: null };
+    : {
+        initialItems: {},
+        initialNotes: "",
+        orderStatus: null,
+        initialPaymentMethod: "cash",
+      };
 
   return (
     <MenuView

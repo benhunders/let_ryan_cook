@@ -64,6 +64,7 @@ export function MenuBuilder({
 
   const [title, setTitle] = useState(menu?.title ?? "");
   const [weekStart, setWeekStart] = useState(menu?.week_start ?? "");
+  const [deliveryDate, setDeliveryDate] = useState(menu?.delivery_date ?? "");
   const [deadline, setDeadline] = useState(
     menu?.order_deadline
       ? toLocalInput(new Date(menu.order_deadline))
@@ -173,6 +174,7 @@ export function MenuBuilder({
       title: title.trim(),
       weekStart: weekStart || null,
       orderDeadline: deadline ? new Date(deadline).toISOString() : null,
+      deliveryDate: deliveryDate || null,
       published: nextPublished,
       ordersLocked,
       dishes: filled.map(({ r }) => ({
@@ -290,6 +292,24 @@ export function MenuBuilder({
             }}
             className="w-full rounded-md border border-black/15 px-3 py-2"
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Delivery day
+          </label>
+          <input
+            type="date"
+            value={deliveryDate}
+            onChange={(e) => {
+              setDeliveryDate(e.target.value);
+              setSavedNote(null);
+            }}
+            className="w-full rounded-md border border-black/15 px-3 py-2"
+          />
+          <p className="mt-1 text-xs text-black/50">
+            The day you hand out the food. Customers see this; they can note a
+            preferred day on their order.
+          </p>
         </div>
         <div className="sm:col-span-2">
           <label className="block text-sm font-medium mb-1">

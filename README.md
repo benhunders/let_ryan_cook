@@ -13,10 +13,17 @@ An UberEats-style app where **Ryan (the chef)** publishes a fresh menu each week
   freely), each with name, description, price, availability, and an image (upload to Supabase
   Storage **or** paste a URL). Publish toggle controls customer visibility.
 - **Weekly menu + ordering** (`/`) — customers browse the published menu and submit one
-  editable order per menu (per-dish quantity + note, plus an overall order note). Ordering
-  closes at the menu's deadline, or earlier via the chef's "Close ordering now" toggle.
-- **My orders** (`/orders`) — a customer's order history.
-- **Chef order view** (`/admin/menus/[id]`) — prep totals + per-customer breakdown.
+  editable order per menu (per-dish quantity + note, plus an overall order note). They pick
+  a **payment method** (cash or meal ticket), and the **delivery day** + order deadline are
+  shown up top. Ordering closes at the deadline, or earlier via the chef's "Close ordering
+  now" toggle.
+- **My orders** (`/orders`) — a customer's order history, with delivery day, chosen payment
+  method, and whether the chef has marked it paid.
+- **Chef order view / fulfillment** (`/admin/menus/[id]`) — prep totals, a payments summary
+  (collected vs outstanding, cash vs ticket split), and a per-customer breakdown where the
+  chef marks each order **paid** and advances its status.
+- **Feedback** (`/feedback`) — customers send feedback tagged by category, including **dish
+  requests** and **dietary needs**.
 - **Roadmap:** automatic dish image search (Google/Unsplash) — scaffolded in
   `lib/imageSearch.ts`, not yet wired up.
 
@@ -46,13 +53,15 @@ Writes go through two transactional RPCs rather than row-by-row requests:
   atomically. The database validates everything: menu published, before the
   deadline, not locked by the chef, dishes on that menu and available,
   quantity 1–100. An empty item list withdraws the order.
-- **`save_menu(menu_id, title, week_start, deadline, published, locked, dishes)`**
+- **`save_menu(menu_id, title, week_start, deadline, delivery_date, published, locked, dishes)`**
   — chef-only; saves menu meta + all dishes in one transaction (no more
   half-saved menus).
 
 Order lines snapshot `dish_name`/`dish_price` at order time, so editing or
 deleting a dish never rewrites (or erases) a customer's order history.
-Profiles are readable only by their owner and admins.
+Profiles are readable only by their owner and admins. `orders.paid` is guarded
+by a trigger so only admins can change it — a customer can never mark their own
+order paid.
 
 ## CI
 GitHub Actions (`.github/workflows/ci.yml`) runs lint, typecheck, and a
