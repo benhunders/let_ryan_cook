@@ -75,10 +75,11 @@ export async function loadUserOrder(menuId: string, userId: string) {
   const initialItems: Record<string, { quantity: number; note: string }> = {};
   let initialNotes = "";
   let orderStatus: string | null = null;
+  let initialPaymentMethod = "cash";
 
   const { data: order, error } = await supabase
     .from("orders")
-    .select("notes, status, order_items(dish_id, quantity, note)")
+    .select("notes, status, payment_method, order_items(dish_id, quantity, note)")
     .eq("menu_id", menuId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -87,6 +88,7 @@ export async function loadUserOrder(menuId: string, userId: string) {
   if (order) {
     initialNotes = order.notes ?? "";
     orderStatus = order.status;
+    initialPaymentMethod = order.payment_method;
     for (const it of order.order_items) {
       if (it.dish_id) {
         initialItems[it.dish_id] = {
@@ -97,7 +99,7 @@ export async function loadUserOrder(menuId: string, userId: string) {
     }
   }
 
-  return { initialItems, initialNotes, orderStatus };
+  return { initialItems, initialNotes, orderStatus, initialPaymentMethod };
 }
 
 // Uncached loader for the admin preview page: uses the admin's session so
@@ -123,7 +125,12 @@ export async function loadMenuViewData(menu: Menu, userId: string | null) {
 
   const order = userId
     ? await loadUserOrder(menu.id, userId)
-    : { initialItems: {}, initialNotes: "", orderStatus: null };
+    : {
+        initialItems: {},
+        initialNotes: "",
+        orderStatus: null,
+        initialPaymentMethod: "cash",
+      };
 
   return { dishes: dishes ?? [], ratingByDish, ...order };
 }

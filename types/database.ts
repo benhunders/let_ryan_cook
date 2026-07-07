@@ -146,6 +146,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          delivery_date: string | null
           id: string
           order_deadline: string | null
           orders_locked: boolean
@@ -156,6 +157,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          delivery_date?: string | null
           id?: string
           order_deadline?: string | null
           orders_locked?: boolean
@@ -166,6 +168,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          delivery_date?: string | null
           id?: string
           order_deadline?: string | null
           orders_locked?: boolean
@@ -234,6 +237,9 @@ export type Database = {
           id: string
           menu_id: string
           notes: string | null
+          paid: boolean
+          paid_at: string | null
+          payment_method: string
           status: string
           status_updated_at: string | null
           user_id: string
@@ -243,6 +249,9 @@ export type Database = {
           id?: string
           menu_id: string
           notes?: string | null
+          paid?: boolean
+          paid_at?: string | null
+          payment_method?: string
           status?: string
           status_updated_at?: string | null
           user_id: string
@@ -252,6 +261,9 @@ export type Database = {
           id?: string
           menu_id?: string
           notes?: string | null
+          paid?: boolean
+          paid_at?: string | null
+          payment_method?: string
           status?: string
           status_updated_at?: string | null
           user_id?: string
@@ -359,6 +371,7 @@ export type Database = {
       remove_admin: { Args: { target_email: string }; Returns: undefined }
       save_menu: {
         Args: {
+          p_delivery_date: string | null
           p_dishes: Json
           p_menu_id: string | null
           p_order_deadline: string | null
@@ -370,7 +383,12 @@ export type Database = {
         Returns: string
       }
       submit_order: {
-        Args: { p_items: Json; p_menu_id: string; p_notes: string | null }
+        Args: {
+          p_items: Json
+          p_menu_id: string
+          p_notes: string | null
+          p_payment_method?: string
+        }
         Returns: string | null
       }
     }

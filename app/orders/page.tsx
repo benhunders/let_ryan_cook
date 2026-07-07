@@ -3,9 +3,18 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/auth";
 import { statusChipClass, statusLabel } from "@/lib/orderStatus";
+import { paymentLabel } from "@/lib/payment";
 import { RatingControl } from "@/components/RatingControl";
 
 export const dynamic = "force-dynamic";
+
+function formatDeliveryDay(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
 
 export default async function OrdersPage() {
   const user = await getUser();
@@ -17,7 +26,7 @@ export default async function OrdersPage() {
   const { data: orders, error } = await supabase
     .from("orders")
     .select(
-      "*, menus(title, week_start), order_items(id, dish_id, quantity, note, dish_name, dish_price)"
+      "*, menus(title, week_start, delivery_date), order_items(id, dish_id, quantity, note, dish_name, dish_price)"
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
@@ -68,9 +77,9 @@ export default async function OrdersPage() {
             key={order.id}
             className="rounded-xl border border-black/10 bg-white p-4"
           >
-            <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
               <h2 className="font-semibold">{order.menus?.title ?? "Menu"}</h2>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`rounded-full text-xs px-2.5 py-1 ${statusChipClass(
                     order.status
@@ -78,11 +87,26 @@ export default async function OrdersPage() {
                 >
                   {statusLabel(order.status)}
                 </span>
+                <span
+                  className={
+                    order.paid
+                      ? "rounded-full bg-green-100 text-green-800 text-xs px-2.5 py-1"
+                      : "rounded-full bg-black/5 text-black/60 text-xs px-2.5 py-1"
+                  }
+                >
+                  {order.paid ? "✓ Paid" : "Unpaid"}
+                </span>
                 <Link href="/" className="text-sm text-brand hover:underline">
                   Edit
                 </Link>
               </div>
             </div>
+            <p className="text-sm text-black/50 mb-2">
+              {order.menus?.delivery_date && (
+                <>🚚 Delivery {formatDeliveryDay(order.menus.delivery_date)} · </>
+              )}
+              Paying by {paymentLabel(order.payment_method).toLowerCase()}
+            </p>
             <ul className="text-sm divide-y divide-black/5">
               {order.order_items.map((it) => {
                 const myRating = it.dish_id

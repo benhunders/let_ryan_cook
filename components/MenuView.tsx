@@ -12,6 +12,14 @@ function formatWeek(d: string) {
   });
 }
 
+function formatDeliveryDay(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 // The customer-facing menu experience, shared by the public home page and the
 // admin preview page. In `preview` mode the deadline lock is ignored so an
 // admin can test ordering on a draft, and a preview banner is shown.
@@ -21,6 +29,7 @@ export function MenuView({
   ratingByDish,
   initialItems,
   initialNotes,
+  initialPaymentMethod = "cash",
   orderStatus,
   isLoggedIn,
   preview = false,
@@ -30,6 +39,7 @@ export function MenuView({
   ratingByDish: Record<string, { avg: number; count: number }>;
   initialItems: Record<string, { quantity: number; note: string }>;
   initialNotes: string;
+  initialPaymentMethod?: string;
   orderStatus: string | null;
   isLoggedIn: boolean;
   preview?: boolean;
@@ -71,11 +81,22 @@ export function MenuView({
           {menu.week_start ? `Week of ${formatWeek(menu.week_start)}` : "This week"}
         </p>
         <h1 className="text-3xl font-bold">{menu.title}</h1>
-        {menu.order_deadline && !deadlinePassed && (
-          <p className="mt-1 text-sm text-black/70">
-            🕒 Order by <DeadlineLabel iso={menu.order_deadline} />
-          </p>
+
+        {(menu.delivery_date || (menu.order_deadline && !deadlinePassed)) && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {menu.delivery_date && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-brand/10 text-brand-dark px-3 py-1.5 text-sm font-medium">
+                🚚 Delivery {formatDeliveryDay(menu.delivery_date)}
+              </span>
+            )}
+            {menu.order_deadline && !deadlinePassed && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-100 text-amber-900 px-3 py-1.5 text-sm font-medium">
+                🕒 Order by <DeadlineLabel iso={menu.order_deadline} />
+              </span>
+            )}
+          </div>
         )}
+
         {orderStatus && (
           <p className="mt-2 text-sm text-black/60">
             Your order:{" "}
@@ -120,6 +141,7 @@ export function MenuView({
           dishes={dishes}
           initialItems={initialItems}
           initialNotes={initialNotes}
+          initialPaymentMethod={initialPaymentMethod}
           ratingByDish={ratingByDish}
         />
       ) : (
