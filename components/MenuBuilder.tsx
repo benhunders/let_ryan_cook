@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ImageUpload } from "./ImageUpload";
 import { ALLERGENS, DIETARY_TAGS } from "@/lib/dietary";
 import { dishImageStoragePath } from "@/lib/images";
-import { saveMenuAction } from "@/app/admin/actions";
+import { saveMenuAction, generateDishDescriptionAction } from "@/app/admin/actions";
 import type { Menu, Dish } from "@/types/database";
 
 type Row = {
@@ -108,6 +108,41 @@ export function MenuBuilder({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Index of the row whose description is being generated (only one at a time).
+  const [describingIndex, setDescribingIndex] = useState<number | null>(null);
+
+  // Draft a description from the dish name via the AI helper. `force` overwrites
+  // an existing description (the ✨ button); without it we only fill a blank one
+  // (used on name blur, so we never clobber what the chef typed).
+  async function suggestDescription(i: number, force: boolean) {
+    const row = rows[i];
+    if (!row?.name.trim()) return;
+    if (!force && row.description.trim()) return;
+    if (describingIndex !== null) return;
+
+    setError(null);
+    setDescribingIndex(i);
+    const result = await generateDishDescriptionAction(row.name);
+    setDescribingIndex(null);
+    if (result.error) {
+      // Silent on auto (blur) attempts; surface only when the chef asked.
+      if (force) setError(result.error);
+      return;
+    }
+    const description = result.description;
+    if (description) {
+      // Re-check freshly: on the blur path, don't clobber text the chef may
+      // have typed while the request was in flight.
+      setRows((prev) =>
+        prev.map((r, idx) =>
+          idx === i && (force || !r.description.trim())
+            ? { ...r, description }
+            : r
+        )
+      );
+      setSavedNote(null);
+    }
+  }
 
   function updateRow(i: number, patch: Partial<Row>) {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -392,16 +427,33 @@ export function MenuBuilder({
               <input
                 value={row.name}
                 onChange={(e) => updateRow(i, { name: e.target.value })}
+                onBlur={() => suggestDescription(i, false)}
                 placeholder="Dish name"
                 className="w-full rounded-md border border-black/15 px-3 py-2 font-medium"
               />
-              <textarea
-                value={row.description}
-                onChange={(e) => updateRow(i, { description: e.target.value })}
-                placeholder="Short description"
-                rows={2}
-                className="w-full rounded-md border border-black/15 px-3 py-2 text-sm"
-              />
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-medium text-black/60">
+                    Description
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => suggestDescription(i, true)}
+                    disabled={!row.name.trim() || describingIndex !== null}
+                    className="text-xs text-brand hover:underline disabled:opacity-50 disabled:no-underline"
+                    title="Draft a description from the dish name"
+                  >
+                    {describingIndex === i ? "✨ Writing…" : "✨ Suggest"}
+                  </button>
+                </div>
+                <textarea
+                  value={row.description}
+                  onChange={(e) => updateRow(i, { description: e.target.value })}
+                  placeholder="Short description (auto-fills from the dish name)"
+                  rows={2}
+                  className="w-full rounded-md border border-black/15 px-3 py-2 text-sm"
+                />
+              </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <div className="flex items-center gap-2">
                   <span className="text-black/50">€</span>

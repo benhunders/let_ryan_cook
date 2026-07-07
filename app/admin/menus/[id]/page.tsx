@@ -78,7 +78,7 @@ export default async function EditMenuPage({
   const cashRevenue = (orders ?? [])
     .filter((o) => o.payment_method === "cash")
     .reduce((s, o) => s + orderTotal(o.order_items), 0);
-  const ticketRevenue = revenue - cashRevenue;
+  const transferRevenue = revenue - cashRevenue;
   const paidCount = (orders ?? []).filter((o) => o.paid).length;
 
   return (
@@ -162,9 +162,9 @@ export default async function EditMenuPage({
                   </span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-black/60">🎟️ Ticket</span>
+                  <span className="text-black/60">🏦 Transfer</span>
                   <span className="font-medium tabular-nums">
-                    €{ticketRevenue.toFixed(2)}
+                    €{transferRevenue.toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -192,7 +192,7 @@ export default async function EditMenuPage({
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-black/5 text-black/70 text-xs px-2.5 py-1">
-                          {order.payment_method === "cash" ? "💶" : "🎟️"}{" "}
+                          {order.payment_method === "cash" ? "💶" : "🏦"}{" "}
                           {paymentLabel(order.payment_method)}
                         </span>
                         <PaidControl orderId={order.id} paid={order.paid} />

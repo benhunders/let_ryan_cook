@@ -137,7 +137,7 @@ export function OrderForm({
                       : "rounded-md border border-black/15 px-4 py-1.5 text-sm hover:bg-black/5"
                   }
                 >
-                  {m.value === "cash" ? "💶 " : "🎟️ "}
+                  {m.value === "cash" ? "💶 " : "🏦 "}
                   {m.label}
                 </button>
               );
