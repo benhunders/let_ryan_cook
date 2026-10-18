@@ -2,6 +2,20 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/types/database";
 
+// Sanitizes a user-supplied `next` redirect target to a same-site path, so
+// links like /login?next=https://evil.com can't bounce users off-site.
+export function safeNext(next: string | null | undefined): string {
+  if (
+    typeof next !== "string" ||
+    !next.startsWith("/") ||
+    next.startsWith("//") ||
+    next.startsWith("/\\")
+  ) {
+    return "/";
+  }
+  return next;
+}
+
 // Returns the currently authenticated user, or null.
 export async function getUser() {
   const supabase = await createClient();
