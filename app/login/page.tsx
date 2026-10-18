@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getUser } from "@/lib/auth";
+import { getUser, safeNext } from "@/lib/auth";
 import { LoginButton } from "@/components/LoginButton";
 import { EmailPasswordAuth } from "@/components/EmailPasswordAuth";
 
@@ -8,7 +8,8 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ next?: string; error?: string }>;
 }) {
-  const { next = "/", error } = await searchParams;
+  const { next: rawNext, error } = await searchParams;
+  const next = safeNext(rawNext);
 
   // Already signed in? Skip the login screen.
   const user = await getUser();
